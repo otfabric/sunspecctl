@@ -123,6 +123,7 @@ To load completions:
 }
 
 // clientConfig builds the Modbus client configuration from the global flags.
+// The client may send read requests (FC03, FC04) only.
 // The serial-line settings only take effect for rtu:// and ascii:// URLs;
 // go-modbus fills in the defaults for the ones left at zero.
 func clientConfig() (modbus.Config, error) {
@@ -134,6 +135,9 @@ func clientConfig() (modbus.Config, error) {
 		Speed:       flagBaud,
 		DataBits:    flagDataBits,
 		StopBits:    flagStopBits,
+		// The client side only reads: the client refuses every other function
+		// code before anything is sent.
+		AllowedFunctionCodes: sunspec.ReadFunctionCodes(),
 	}
 	switch strings.ToLower(strings.TrimSpace(flagParity)) {
 	case "", "n", "none":

@@ -4,10 +4,11 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"io"
 
 	"github.com/otfabric/go-sunspec"
+	"github.com/otfabric/go-sunspec/devicefile"
 	"github.com/otfabric/go-sunspec/registry"
 	"github.com/spf13/cobra"
 )
@@ -45,17 +46,12 @@ The file goes to standard output, or to the file named with --output.`,
 				return fmt.Errorf("discover: %w", err)
 			}
 
-			unitID, base := device.UnitID, device.Discovery.BaseAddress
-			file := &deviceFile{UnitID: &unitID, BaseAddress: &base, Models: []fileModel{}}
-			for _, inst := range device.Discovery.Models {
-				dm, err := device.ReadModel(ctx, inst)
-				// A model that does not fit its schema is still captured,
-				// from its registers. Anything else means the registers are
-				// not all there.
-				if err != nil && !errors.Is(err, sunspec.ErrDecode) {
-					return fmt.Errorf("read model %d: %w", inst.Header.ID, err)
-				}
-				file.Models = append(file.Models, fileModelFromDecoded(dm, flagRaw))
+			// A model that does not fit its schema is still captured, from its
+			// registers; any other read error ends the capture, already
+			// prefixed with "read model <id>".
+			file, err := devicefile.Capture(ctx, device, flagRaw)
+			if err != nil {
+				return err
 			}
 			if err := writeDeviceFile(cmd.OutOrStdout(), output, file); err != nil {
 				return fmt.Errorf("write device file: %w", err)
@@ -86,13 +82,12 @@ The file goes to standard output, or to the file named with --output.`,
 		Example: "  sunspecctl template --model 1,103,160 -o device.json",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			unitID, base := uint8(1), uint16(defaultBaseAddress)
-			file := &deviceFile{UnitID: &unitID, BaseAddress: &base, Models: []fileModel{}}
+			file := devicefile.New(devicefile.DefaultUnitID, devicefile.DefaultBaseAddress)
 			for _, id := range modelIDs {
 				if id > 0xFFFF || !registry.Known(uint16(id)) {
 					return fmt.Errorf("model %d: no schema is known for this model", id)
 				}
-				file.Models = append(file.Models, templateModel(registry.ByID(uint16(id))))
+				file.Models = append(file.Models, devicefile.Template(registry.ByID(uint16(id))))
 			}
 			if err := writeDeviceFile(cmd.OutOrStdout(), output, file); err != nil {
 				return fmt.Errorf("write device file: %w", err)
@@ -105,4 +100,13 @@ The file goes to standard output, or to the file named with --output.`,
 	cmd.Flags().StringVarP(&output, "output", "o", "", "Write the device file here instead of standard output")
 	_ = cmd.MarkFlagRequired("model")
 	return cmd
+}
+
+// writeDeviceFile writes the file as indented JSON, to the named file or,
+// when path is empty, to out.
+func writeDeviceFile(out io.Writer, path string, file *devicefile.File) error {
+	if path == "" {
+		return file.Write(out)
+	}
+	return file.WriteFile(path)
 }

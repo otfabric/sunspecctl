@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,7 +21,7 @@ import (
 
 	"github.com/otfabric/go-modbus"
 	"github.com/otfabric/go-sunspec"
-	"github.com/otfabric/go-sunspec/registry"
+	"github.com/otfabric/go-sunspec/devicefile"
 	"github.com/otfabric/go-sunspec/testutil"
 )
 
@@ -635,7 +634,7 @@ func TestCaptureServeReproducesTheDevice(t *testing.T) {
 			if r.err != nil || r.stderr != "" {
 				t.Fatalf("%s: capture: %v, stderr %q", name, r.err, r.stderr)
 			}
-			var file deviceFile
+			var file devicefile.File
 			if err := json.Unmarshal([]byte(r.stdout), &file); err != nil {
 				t.Fatalf("%s: capture output is not a device file: %v", name, err)
 			}
@@ -681,7 +680,7 @@ func TestCaptureFileContents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	file, err := parseDeviceFile(data)
+	file, err := devicefile.Parse(data)
 	if err != nil {
 		t.Fatalf("the captured file does not parse: %v\n%s", err, data)
 	}
@@ -739,47 +738,12 @@ func TestCaptureErrors(t *testing.T) {
 	wantFail(t, runCLI(t, "capture", "extra"), `unknown command "extra" for "sunspecctl capture"`)
 }
 
-func TestFileModelFallsBackToRegisters(t *testing.T) {
-	// Model 101 with a current of 12.34 A.
-	regs := newModel(t, 101, 0).set("A", 1234).set("A_SF", neg2).fixture().Registers
-	dm, err := sunspec.DecodeModel(append([]uint16{101, 50}, regs...), registry.ByID(101), 40070)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m := fileModelFromDecoded(dm, false)
-	if m.Registers != nil || len(m.Points) != 2 || m.Points[0].name != "A" || m.Points[0].value != 12.34 {
-		t.Fatalf("clean model captured as %+v", m)
-	}
-	// Whatever keeps the written model from reading back as the device's is
-	// noticed, and the model is then captured as registers.
-	for name, change := range map[string]func(*fileModel){
-		"value that is not JSON":   func(m *fileModel) { m.Points[0].value = make(chan int) },
-		"value the file rejects":   func(m *fileModel) { m.Points[0].value = true },
-		"value the schema rejects": func(m *fileModel) { m.Points[0].value = "text" },
-		"point the schema lacks":   func(m *fileModel) { m.Points = append(m.Points, pointEntry{name: "Nope", value: 1}) },
-		"another value":            func(m *fileModel) { m.Points[0].value = 6 },
-	} {
-		m := fileModelFromDecoded(dm, false)
-		change(&m)
-		if reproduces(&m, dm) {
-			t.Errorf("%s: the changed model still counts as a reproduction", name)
-		}
-	}
-	// A float that JSON cannot hold: the model is captured as registers.
-	inf := sunspec.DecodedModel{ModelID: 101, Schema: dm.Schema, RawRegisters: dm.RawRegisters, Group: &sunspec.DecodedGroup{
-		Points: []sunspec.DecodedPoint{{Name: "A", Type: "uint16", RawValue: math.Inf(1), Implemented: true}},
-	}}
-	if m := fileModelFromDecoded(&inf, false); len(m.Registers) != 50 || m.Points != nil {
-		t.Errorf("model with an infinite value captured as %+v", m)
-	}
-}
-
 func TestTemplate(t *testing.T) {
 	r := runCLI(t, "template", "--model", "1,160", "--model", "705")
 	if r.err != nil || r.stderr != "" {
 		t.Fatalf("template: %v, stderr %q", r.err, r.stderr)
 	}
-	file, err := parseDeviceFile([]byte(r.stdout))
+	file, err := devicefile.Parse([]byte(r.stdout))
 	if err != nil {
 		t.Fatalf("the template does not parse: %v\n%s", err, r.stdout)
 	}
@@ -787,13 +751,13 @@ func TestTemplate(t *testing.T) {
 		t.Fatalf("file = %+v", file)
 	}
 	common := file.Models[0]
-	if common.Name != "Common" || len(common.Points) != 6 || common.Points[0].name != "Mn" || common.Points[5].name != "DA" || common.Points[0].value != nil {
+	if common.Name != "Common" || len(common.Points) != 6 || common.Points[0].Name != "Mn" || common.Points[5].Name != "DA" || common.Points[0].Value != nil {
 		t.Errorf("Common template = %+v", common)
 	}
 	if !strings.Contains(r.stdout, `"Mn": null`) || strings.Contains(r.stdout, `"Pad"`) || strings.Contains(r.stdout, `"L"`) {
 		t.Errorf("template text:\n%s", r.stdout)
 	}
-	if mods := file.Models[1].Groups["module"]; len(mods) != 1 || mods[0].Points[0].name != "ID" {
+	if mods := file.Models[1].Groups["module"]; len(mods) != 1 || mods[0].Points[0].Name != "ID" {
 		t.Errorf("MPPT template groups = %+v", file.Models[1].Groups)
 	}
 	if pts := file.Models[2].Groups["Crv"][0].Groups["Pt"]; len(pts) != 1 || len(pts[0].Points) != 2 {
@@ -826,51 +790,23 @@ func TestTemplate(t *testing.T) {
 	}
 }
 
-func TestDeviceFilePointListJSON(t *testing.T) {
-	// Order is kept both ways; null points and a null object are accepted.
-	var g fileGroup
-	if err := json.Unmarshal([]byte(`{"points": {"b": 1, "a": null, "c": "x"}}`), &g); err != nil {
-		t.Fatal(err)
+func TestWriteDeviceFile(t *testing.T) {
+	// The format itself is tested in go-sunspec's devicefile package; this is
+	// the choice between standard output and --output.
+	file := devicefile.New(devicefile.DefaultUnitID, devicefile.DefaultBaseAddress)
+	var buf bytes.Buffer
+	if err := writeDeviceFile(&buf, "", file); err != nil || buf.String() != "{\n  \"unit_id\": 1,\n  \"base_address\": 40000,\n  \"models\": []\n}\n" {
+		t.Errorf("to a writer: %v, %q", err, buf.String())
 	}
-	if len(g.Points) != 3 || g.Points[0].name != "b" || g.Points[1].value != nil || g.Points[2].value != "x" {
-		t.Errorf("points = %+v", g.Points)
-	}
-	text, err := json.Marshal(g)
-	if err != nil || string(text) != `{"points":{"b":1,"a":null,"c":"x"}}` {
-		t.Errorf("marshal = %s, %v", text, err)
-	}
-	if err := json.Unmarshal([]byte(`{"points": null}`), &g); err != nil || g.Points != nil {
-		t.Errorf("null points: %v, %+v", err, g.Points)
-	}
-	if _, err := json.Marshal(pointList{{name: "x", value: make(chan int)}}); err == nil {
-		t.Error("an unmarshalable value was marshalled")
-	}
-	// Called directly with text that is not JSON.
-	var l pointList
-	for _, bad := range []string{``, `{"a": }`, `{"a"`, `{x}`} {
-		if err := l.UnmarshalJSON([]byte(bad)); err == nil {
-			t.Errorf("UnmarshalJSON(%q) succeeded", bad)
-		}
-	}
-	if err := writeDeviceFile(&bytes.Buffer{}, "", &deviceFile{Models: []fileModel{{fileGroup: fileGroup{Points: pointList{{name: "x", value: make(chan int)}}}}}}); err == nil {
-		t.Error("a file with an unmarshalable value was written")
-	}
-	if err := writeDeviceFile(failingWriter{}, "", &deviceFile{}); err == nil {
+	if err := writeDeviceFile(failingWriter{}, "", file); err == nil {
 		t.Error("a failing writer went unnoticed")
 	}
-	if got := position([]byte("ab\ncd"), 99); got != "line 2, column 3" {
-		t.Errorf("position past the end = %q", got)
-	}
-	if got := position([]byte("ab"), -1); got != "line 1, column 1" {
-		t.Errorf("position before the start = %q", got)
-	}
-	// A null group instance is an empty one.
-	file, err := parseDeviceFile([]byte(`{"models": [{"id": 160, "groups": {"module": [null, {}]}}]}`))
-	if err != nil {
+	path := filepath.Join(t.TempDir(), "d.json")
+	if err := writeDeviceFile(failingWriter{}, path, file); err != nil {
 		t.Fatal(err)
 	}
-	if models, err := file.serverModels(); err != nil || len(models[0].Values.Groups["module"]) != 2 {
-		t.Errorf("null instance: %v", err)
+	if data, err := os.ReadFile(path); err != nil || string(data) != buf.String() {
+		t.Errorf("to a file: %v, %q", err, data)
 	}
 }
 

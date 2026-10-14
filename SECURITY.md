@@ -39,7 +39,7 @@ SunSpec devices are read, and with `sunspecctl serve` simulated, over Modbus, wh
 
 ### Reading Only, as a Client
 
-As a client `sunspecctl` reads and decodes; no command writes SunSpec control points to a device.
+As a client `sunspecctl` reads and decodes; no command writes SunSpec control points to a device. This is enforced, not only intended: `detect`, `models`, `read*`, `poll*` and `capture` create their Modbus client with only Read Holding Registers (0x03) and Read Input Registers (0x04) allowed (`sunspec.ReadFunctionCodes()` given to go-modbus's `AllowedFunctionCodes`). Any other function code is refused by the client, with `modbus.ErrFunctionCodeNotAllowed`, before anything is sent; `TestClientIsReadOnly` checks it against a device that counts writes.
 
 ### Serving a Simulated Device
 

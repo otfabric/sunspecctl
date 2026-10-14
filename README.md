@@ -362,6 +362,8 @@ Values:
 
 Unknown members, a point given twice and point names the model does not have are errors, so a typo does not silently serve an empty value.
 
+The format is implemented by the [`devicefile`](https://github.com/otfabric/go-sunspec/tree/main/devicefile) package of go-sunspec, which Go programs can use to read, write and serve device files themselves. Its JSON Schema, [`devicefile/devicefile.schema.json`](https://github.com/otfabric/go-sunspec/blob/main/devicefile/devicefile.schema.json) (`$id` `https://otfabric.io/schemas/sunspec/devicefile-1.schema.json`), describes the form of a file for editors and validators; whether the models and points exist and the values fit is checked by `sunspecctl serve --check`.
+
 ### Getting a device file
 
 ```bash
@@ -442,7 +444,7 @@ They are still discovered and listed: `sunspecctl models` shows them with `SCHEM
 
 ### Can sunspecctl write SunSpec points (controls)?
 
-No. As a client it reads and decodes only; no command writes to a device. A device simulated with `sunspecctl serve` does accept writes *from* other clients, to the points SunSpec defines as writable.
+No. As a client it reads and decodes only; no command writes to a device. The Modbus client of `detect`, `models`, `read*`, `poll*` and `capture` is created with only the read function codes (3 and 4) allowed, so it refuses any other request before sending it. A device simulated with `sunspecctl serve` does accept writes *from* other clients, to the points SunSpec defines as writable.
 
 ### Can I test my software without a real inverter?
 
@@ -476,7 +478,7 @@ Tests need no hardware: they run against the SunSpec fixture server of go-sunspe
 ## Requirements
 
 - Go 1.23+ to build from source (not needed for the pre-built binaries)
-- [otfabric/go-sunspec](https://github.com/otfabric/go-sunspec) v0.5.1+ and [otfabric/go-modbus](https://github.com/otfabric/go-modbus) v1.4.2+
+- [otfabric/go-sunspec](https://github.com/otfabric/go-sunspec) v0.6.0+ and [otfabric/go-modbus](https://github.com/otfabric/go-modbus) v1.5.0+
 
 ## Contributing
 

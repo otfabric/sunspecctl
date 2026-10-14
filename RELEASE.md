@@ -1,5 +1,28 @@
 # sunspecctl Releases
 
+## v0.2.0
+
+**Date:** 2026-10-14
+**Previous release:** v0.1.0
+
+## Summary
+
+`sunspecctl` moves to go-sunspec v0.6.0 and go-modbus v1.5.0. The device file code now comes from go-sunspec's new `devicefile` package, which also publishes a JSON Schema of the format; the files `capture` and `template` write, the files `serve` accepts and, but for one, the error messages are those of v0.1.0. The reading commands now use a Modbus client that can only send read requests.
+
+## Changes
+
+### Changed
+
+- **Dependencies** — built on go-sunspec v0.6.0 and go-modbus v1.5.0 (v0.1.0: go-sunspec v0.5.1, go-modbus v1.4.2).
+- **Device file code from go-sunspec** — parsing, validation, serving, capture, templates and writing of device files are now go-sunspec's [`devicefile`](https://github.com/otfabric/go-sunspec/tree/main/devicefile) package, the same code the OT Fabric SunSpec Explorer uses. Files written and accepted, and the messages for invalid files, do not change, with one exception: a member of the wrong type is reported by Go's JSON decoder, whose message names the Go type, now `File` instead of `deviceFile` (`cannot unmarshal string into Go struct field File.models.0.id of type uint16`). The format has a JSON Schema, `devicefile/devicefile.schema.json` in go-sunspec (`$id` `https://otfabric.io/schemas/sunspec/devicefile-1.schema.json`), referenced from the README.
+- **Read-only client** — `detect`, `models`, `read`, `read-model`, `read-point`, `poll`, `poll-model`, `poll-point` and `capture` create their Modbus client with only function codes 0x03 and 0x04 allowed (`sunspec.ReadFunctionCodes()`). No command sent anything else before; now the client refuses any other request before it is sent. `serve` is a server and is not affected.
+
+### Unchanged
+
+- No changes to the commands, flags, text output, JSON output, device files or exit status, other than the type-error message above.
+
+---
+
 ## v0.1.0
 
 **Date:** 2026-10-13

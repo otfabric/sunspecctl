@@ -56,7 +56,7 @@ Run `make` (or `make help`) for the full list of targets.
 
 ### Where a change belongs
 
-Decoding, encoding, discovery, the served device, model definitions and the Modbus transports live in [go-sunspec](https://github.com/otfabric/go-sunspec) and [go-modbus](https://github.com/otfabric/go-modbus). A wrongly decoded or encoded value or a missing model is fixed there and reaches `sunspecctl` with a dependency update; this repository holds the commands, flags, output and the device file format.
+Decoding, encoding, discovery, the served device, the device file format, model definitions and the Modbus transports live in [go-sunspec](https://github.com/otfabric/go-sunspec) and [go-modbus](https://github.com/otfabric/go-modbus). A wrongly decoded or encoded value, a missing model or a device file problem is fixed there and reaches `sunspecctl` with a dependency update; the device file format is go-sunspec's [`devicefile`](https://github.com/otfabric/go-sunspec/tree/main/devicefile) package, with its JSON Schema. This repository holds the commands, flags and output.
 
 To develop against a go-sunspec that is not released yet, do not add a `replace` directive to `go.mod`. Put both checkouts in a Go workspace outside the repositories and pass it to make: `make check GOWORK=/path/to/go.work` (the Makefile sets `GOWORK=off` by default, so that the module builds standalone).
 
@@ -81,7 +81,7 @@ Examples:
 
 - Add tests for new functionality in the appropriate `_test.go` file; the repository uses only the standard `testing` package
 - Use go-sunspec's `testutil` package for anything that talks to a device: it serves a SunSpec model chain over Modbus TCP. For `serve`, start the command in-process on a free port (`startServe` in `serve_test.go`) and read it back with the other commands
-- A change to the device file format or to `capture` must keep `TestCaptureServeReproducesTheDevice` meaningful: capture → serve → read gives the same decoded values
+- A change to `capture`, `serve` or `template`, or a go-sunspec update, must keep `TestCaptureServeReproducesTheDevice` meaningful: capture → serve → read gives the same decoded values
 - Assert behaviour: the printed output, the JSON document, the returned error — not just that the code ran
 - Keep tests fast, deterministic and race-clean; CI runs them with `-race` on every Go version from 1.23 and a 120 s per-package timeout
 - Coverage is enforced by `make check` and Codecov; new code should come with tests
@@ -117,8 +117,7 @@ For larger changes, please open an issue first to discuss the approach.
 main.go        Root command, global flags, detect / models / read* commands, output
 poll.go        poll, poll-model and poll-point
 serve.go       serve: run a device from a device file, report client writes
-capture.go     capture and template: write device files
-devicefile.go  The device file format: parsing, validation, conversion to and from models
+capture.go     capture and template: write device files (format: go-sunspec/devicefile)
 *_test.go      Tests against the go-sunspec fixture server and in-process serve
 ```
 

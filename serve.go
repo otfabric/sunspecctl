@@ -16,6 +16,7 @@ import (
 
 	"github.com/otfabric/go-modbus"
 	"github.com/otfabric/go-sunspec"
+	"github.com/otfabric/go-sunspec/devicefile"
 	"github.com/otfabric/go-sunspec/registry"
 	"github.com/spf13/cobra"
 )
@@ -163,7 +164,7 @@ SunSpec defines as writable. Accepted writes are printed. The device runs
 until it is interrupted (Ctrl-C) or terminated.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			df, err := loadDeviceFile(file)
+			df, err := devicefile.Load(file)
 			if err != nil {
 				return fmt.Errorf("device file: %w", err)
 			}
@@ -176,7 +177,11 @@ until it is interrupted (Ctrl-C) or terminated.`,
 				base = &baseAddress
 			}
 			out := cmd.OutOrStdout()
-			srv, err := df.server(unitID, base, writeLogger(out))
+			srv, err := df.Server(&devicefile.ServerOptions{
+				UnitID:      unitID,
+				BaseAddress: base,
+				OnWrite:     serverWriteHook(writeLogger(out)),
+			})
 			if err != nil {
 				return fmt.Errorf("device file %s: %w", file, err)
 			}
@@ -230,7 +235,7 @@ until it is interrupted (Ctrl-C) or terminated.`,
 	}
 
 	cmd.Flags().StringVarP(&file, "file", "f", "", "Device file to serve (required)")
-	cmd.Flags().Uint16Var(&baseAddress, "base-address", defaultBaseAddress, "Register address of the SunSpec marker (overrides the file)")
+	cmd.Flags().Uint16Var(&baseAddress, "base-address", devicefile.DefaultBaseAddress, "Register address of the SunSpec marker (overrides the file)")
 	cmd.Flags().BoolVar(&check, "check", false, "Validate the device file, print the layout and exit")
 	_ = cmd.MarkFlagRequired("file")
 	return cmd
