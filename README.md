@@ -293,13 +293,13 @@ The device runs until you press Ctrl-C or the process is terminated (SIGINT or S
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--file`, `-f` | (required) | The device file |
-| `--url` | `tcp://localhost:502` | Address to listen on: `tcp://host:port`. Ports below 1024 usually need privileges; use `tcp://0.0.0.0:1502` to accept connections from other machines |
+| `--url` | `tcp://localhost:502` | Address to listen on: `tcp://host:port`, or `tcp+tls://host:port` with `--tls-cert`, `--tls-key` and `--tls-ca` (see [Serving over TLS](#serving-over-tls)). Ports below 1024 usually need privileges; use `tcp://0.0.0.0:1502` to accept connections from other machines |
 | `--unit-id` | from the file, else `1` | Modbus unit ID the device answers (overrides the file) |
 | `--base-address` | from the file, else `40000` | Register address of the `SunS` marker (overrides the file) |
 | `--check` | `false` | Validate the file, print the layout and exit without listening |
 | `--json` | `false` | Print the layout, and each client write, as JSON |
 
-Only plain Modbus TCP is served. Modbus has no authentication: whoever can reach the port can read the device and write its writable points. See [SECURITY.md](SECURITY.md).
+The device is served over Modbus TCP, or over Modbus/TCP Security (`tcp+tls://`, see [Serving over TLS](#serving-over-tls)). Plain Modbus TCP has no authentication: whoever can reach the port can read the device and write its writable points. See [SECURITY.md](SECURITY.md).
 
 ### The device file
 
@@ -452,7 +452,7 @@ Yes: [`sunspecctl serve`](#serving--simulating-a-device) runs a simulated device
 
 ### How do I use the output in a script?
 
-Add `--json` to any command for structured output suitable for `jq`. The exit status is non-zero when a command fails.
+Add `--json` to any command for structured output suitable for `jq`. The exit status is 0 on success and 1 when a command fails.
 
 ### How are the model definitions kept up to date?
 
