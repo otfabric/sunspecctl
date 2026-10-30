@@ -1343,8 +1343,8 @@ func TestMainExitCodes(t *testing.T) {
 	}
 
 	stdout, stderr, code = runMain(t, "frobnicate")
-	if code != 1 {
-		t.Errorf("unknown command: exit %d, want 1", code)
+	if code != exitUsage {
+		t.Errorf("unknown command: exit %d, want 2", code)
 	}
 	if stdout != "" || !strings.HasPrefix(stderr, "Error: unknown command \"frobnicate\" for \"sunspecctl\"\n") {
 		t.Errorf("unknown command: stdout %q, stderr %q", stdout, stderr)
@@ -1360,7 +1360,7 @@ func TestMainExitCodes(t *testing.T) {
 	// A failing command prints the error and the usage on stderr, nothing on
 	// stdout.
 	stdout, stderr, code = runMain(t, "read-model", "--id", "999", "--url", url)
-	if code != 1 || stdout != "" {
+	if code != exitUnsupported || stdout != "" {
 		t.Errorf("unknown model: exit %d, stdout %q", code, stdout)
 	}
 	if !strings.HasPrefix(stderr, "Error: read model 999: sunspec: unknown model ID: model 999 not found in discovery\nUsage:\n  sunspecctl read-model [flags]\n") {

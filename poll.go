@@ -173,7 +173,7 @@ func pollPointCmd() *cobra.Command {
 
 			inst := device.ModelByID(modelID)
 			if inst == nil {
-				return fmt.Errorf("model %d not found", modelID)
+				return withExit(exitUnsupported, fmt.Errorf("model %d not found", modelID))
 			}
 
 			out := cmd.OutOrStdout()

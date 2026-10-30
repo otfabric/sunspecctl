@@ -12,7 +12,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"text/tabwriter"
 	"time"
 
@@ -44,9 +46,19 @@ var (
 )
 
 func main() {
-	if err := newRootCmd().Execute(); err != nil {
-		os.Exit(1)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	code := run(ctx, os.Args[1:])
+	stop()
+	if code != exitOK {
+		os.Exit(code)
 	}
+}
+
+// run executes one invocation and returns the process exit code.
+func run(ctx context.Context, args []string) int {
+	root := newRootCmd()
+	root.SetArgs(args)
+	return exitCode(root.ExecuteContext(ctx))
 }
 
 // newRootCmd builds the sunspecctl command tree. Commands write their output
@@ -57,7 +69,12 @@ func newRootCmd() *cobra.Command {
 		Use:               "sunspecctl",
 		Short:             "SunSpec Modbus tool for inspecting solar inverters and meters",
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			commandEntered = true
+			return applyFormatEnv(cmd.Flags().Changed("json"))
+		},
 	}
+	commandEntered = false
 
 	root.PersistentFlags().StringVar(&flagURL, "url", "tcp://localhost:502", "Modbus device URL")
 	root.PersistentFlags().Uint8Var(&flagUnitID, "unit-id", 1, "Modbus unit ID")
@@ -147,13 +164,13 @@ func clientConfig() (modbus.Config, error) {
 	case "o", "odd":
 		conf.Parity = modbus.ParityOdd
 	default:
-		return conf, fmt.Errorf("invalid --parity %q: use none, even or odd", flagParity)
+		return conf, withExit(exitUsage, fmt.Errorf("invalid --parity %q: use none, even or odd", flagParity))
 	}
 	if flagDataBits != 0 && (flagDataBits < 5 || flagDataBits > 8) {
-		return conf, fmt.Errorf("invalid --data-bits %d: use 5, 6, 7 or 8", flagDataBits)
+		return conf, withExit(exitUsage, fmt.Errorf("invalid --data-bits %d: use 5, 6, 7 or 8", flagDataBits))
 	}
 	if flagStopBits > 2 {
-		return conf, fmt.Errorf("invalid --stop-bits %d: use 1 or 2", flagStopBits)
+		return conf, withExit(exitUsage, fmt.Errorf("invalid --stop-bits %d: use 1 or 2", flagStopBits))
 	}
 	cert, pool, err := loadTLS(flagURL)
 	if err != nil {
@@ -175,7 +192,7 @@ func newClient() (*modbus.Client, func(), error) {
 		return nil, nil, fmt.Errorf("create client: %w", err)
 	}
 	if err := client.Open(); err != nil {
-		return nil, nil, fmt.Errorf("connect: %w", err)
+		return nil, nil, withExit(exitTransport, fmt.Errorf("connect: %w", err))
 	}
 	return client, func() { _ = client.Close() }, nil
 }
@@ -236,7 +253,7 @@ func detectCmd() *cobra.Command {
 			}
 			defer cleanup()
 
-			ctx, cancel := context.WithTimeout(context.Background(), flagTimeout)
+			ctx, cancel := context.WithTimeout(cmd.Context(), flagTimeout)
 			defer cancel()
 
 			result, err := sunspec.Detect(ctx, client, discoverOpts())
@@ -274,7 +291,7 @@ func modelsCmd() *cobra.Command {
 			}
 			defer cleanup()
 
-			ctx, cancel := context.WithTimeout(context.Background(), flagTimeout)
+			ctx, cancel := context.WithTimeout(cmd.Context(), flagTimeout)
 			defer cancel()
 
 			device, err := sunspec.Discover(ctx, client, discoverOpts())
@@ -316,7 +333,7 @@ func readCmd() *cobra.Command {
 			}
 			defer cleanup()
 
-			ctx, cancel := context.WithTimeout(context.Background(), flagTimeout)
+			ctx, cancel := context.WithTimeout(cmd.Context(), flagTimeout)
 			defer cancel()
 
 			device, err := sunspec.Discover(ctx, client, discoverOpts())
@@ -357,7 +374,7 @@ func readModelCmd() *cobra.Command {
 			}
 			defer cleanup()
 
-			ctx, cancel := context.WithTimeout(context.Background(), flagTimeout)
+			ctx, cancel := context.WithTimeout(cmd.Context(), flagTimeout)
 			defer cancel()
 
 			device, err := sunspec.Discover(ctx, client, discoverOpts())
@@ -403,7 +420,7 @@ func readPointCmd() *cobra.Command {
 			}
 			defer cleanup()
 
-			ctx, cancel := context.WithTimeout(context.Background(), flagTimeout)
+			ctx, cancel := context.WithTimeout(cmd.Context(), flagTimeout)
 			defer cancel()
 
 			device, err := sunspec.Discover(ctx, client, discoverOpts())
@@ -413,7 +430,7 @@ func readPointCmd() *cobra.Command {
 
 			inst := device.ModelByID(modelID)
 			if inst == nil {
-				return fmt.Errorf("model %d not found", modelID)
+				return withExit(exitUnsupported, fmt.Errorf("model %d not found", modelID))
 			}
 
 			dp, err := device.ReadPoint(ctx, *inst, pointName)

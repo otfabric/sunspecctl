@@ -45,15 +45,15 @@ func loadTLS(url string) (*tls.Certificate, *x509.CertPool, error) {
 		missing = append(missing, "--tls-ca")
 	}
 	if len(missing) > 0 {
-		return nil, nil, fmt.Errorf("a tcp+tls:// URL needs %s", strings.Join(missing, ", "))
+		return nil, nil, withExit(exitUsage, fmt.Errorf("a tcp+tls:// URL needs %s", strings.Join(missing, ", ")))
 	}
 	cert, err := tls.LoadX509KeyPair(flagTLSCert, flagTLSKey)
 	if err != nil {
-		return nil, nil, fmt.Errorf("--tls-cert/--tls-key: %w", err)
+		return nil, nil, withExit(exitInvalidInput, fmt.Errorf("--tls-cert/--tls-key: %w", err))
 	}
 	pool, err := modbus.LoadCertPool(flagTLSCA)
 	if err != nil {
-		return nil, nil, fmt.Errorf("--tls-ca: %w", err)
+		return nil, nil, withExit(exitInvalidInput, fmt.Errorf("--tls-ca: %w", err))
 	}
 	return &cert, pool, nil
 }
