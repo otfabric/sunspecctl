@@ -1,4 +1,4 @@
-.PHONY: help all build build-all release-all check test coverage coverage-html coverage-clean coverage-check cover fmt fmt-check vet lint lint-ci vuln install clean
+.PHONY: help all build build-all release-all check test coverage coverage-html coverage-clean coverage-check cover fmt fmt-check vet lint lint-ci vuln install clean e2e
 
 help: ## This help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -136,6 +136,11 @@ release-all: build-all ## Package CLI binaries into tar.gz (Unix) and zip (Windo
 			tar czf $(RELEASE_DIR)/$$bin.tar.gz -C $(RELEASE_DIR) $$bin; \
 		fi; \
 	done
+
+e2e: ## Build the binary and run the e2e suite against it
+	@mkdir -p bin
+	@go build $(LDFLAGS) -o bin/sunspecctl $(APP_SRC)
+	@SUNSPECCTL_E2E_BIN=$(CURDIR)/bin/sunspecctl SUNSPECCTL_E2E_VERSION=$(VERSION) go test -count=1 -tags=e2e ./e2e/...
 
 install: build ## Install sunspecctl to /usr/local/bin
 	@echo "Installing $(APP_NAME) to /usr/local/bin"
