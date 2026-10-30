@@ -38,7 +38,7 @@ The file goes to standard output, or to the file named with --output.`,
 			}
 			defer cleanup()
 
-			ctx, cancel := context.WithTimeout(context.Background(), flagTimeout)
+			ctx, cancel := context.WithTimeout(cmd.Context(), flagTimeout)
 			defer cancel()
 
 			device, err := sunspec.Discover(ctx, client, discoverOpts())
@@ -54,7 +54,7 @@ The file goes to standard output, or to the file named with --output.`,
 				return err
 			}
 			if err := writeDeviceFile(cmd.OutOrStdout(), output, file); err != nil {
-				return fmt.Errorf("write device file: %w", err)
+				return withExit(exitInternal, fmt.Errorf("write device file: %w", err))
 			}
 			return nil
 		},
@@ -85,12 +85,12 @@ The file goes to standard output, or to the file named with --output.`,
 			file := devicefile.New(devicefile.DefaultUnitID, devicefile.DefaultBaseAddress)
 			for _, id := range modelIDs {
 				if id > 0xFFFF || !registry.Known(uint16(id)) {
-					return fmt.Errorf("model %d: no schema is known for this model", id)
+					return withExit(exitInvalidInput, fmt.Errorf("model %d: no schema is known for this model", id))
 				}
 				file.Models = append(file.Models, devicefile.Template(registry.ByID(uint16(id))))
 			}
 			if err := writeDeviceFile(cmd.OutOrStdout(), output, file); err != nil {
-				return fmt.Errorf("write device file: %w", err)
+				return withExit(exitInternal, fmt.Errorf("write device file: %w", err))
 			}
 			return nil
 		},

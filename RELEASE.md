@@ -1,5 +1,37 @@
 # sunspecctl Releases
 
+## v0.3.0
+
+**Date:** 2026-10-30
+**Previous release:** v0.2.1
+
+## Summary
+
+Exit codes converge on the organisation table (ADR-0006). **Scripts that test for exit 1 must change.**
+
+| Case | Old | New |
+|---|---|---|
+| Device is not SunSpec | 1 | 1 |
+| Invalid flags or arguments | 1 | 2 |
+| Invalid URL, device file, TLS file, point name | 1 | 3 |
+| Connection failure, `serve` cannot listen | 1 | 4 |
+| Timeout | 1 | 5 |
+| Modbus exception, malformed frame, undecodable registers | 1 | 6 |
+| Model not on the device | 1 | 8 |
+| Permission refused by the operating system | 1 | 9 |
+| Output or unexpected error | 1 | 10 |
+| Interrupted before a result | killed by the signal | 130 |
+
+### Changed
+
+- SIGINT and SIGTERM now cancel every command through a root context, not only `serve` and `poll`.
+
+### Added
+
+- `SUNSPECCTL_FORMAT` (canonical) and `SUNSPECCTL_OUTPUT_FORMAT`: `json` has the effect of `--json`.
+
+---
+
 ## v0.2.1
 
 **Date:** 2026-10-29

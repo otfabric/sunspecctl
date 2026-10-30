@@ -861,9 +861,9 @@ func TestServeStopsOnSignal(t *testing.T) {
 		}
 	}
 
-	// An invalid file: exit status 1, the error on stderr, nothing served.
+	// An invalid file: exit status 3, the error on stderr, nothing served.
 	stdout, stderr, code := runMain(t, "serve", "--file", writeFile(t, `{"models": [{"id": 103, "points": {"Watts": 1}}]}`))
-	if code != 1 || stdout != "" || !strings.HasPrefix(stderr, "Error: device file ") || !strings.Contains(stderr, "point Watts") {
+	if code != exitInvalidInput || stdout != "" || !strings.HasPrefix(stderr, "Error: device file ") || !strings.Contains(stderr, "point Watts") {
 		t.Errorf("invalid file: exit %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 }

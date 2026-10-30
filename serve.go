@@ -166,7 +166,7 @@ until it is interrupted (Ctrl-C) or terminated.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			df, err := devicefile.Load(file)
 			if err != nil {
-				return fmt.Errorf("device file: %w", err)
+				return withExit(exitInvalidInput, fmt.Errorf("device file: %w", err))
 			}
 			var unitID *uint8
 			if cmd.Flags().Changed("unit-id") {
@@ -183,7 +183,7 @@ until it is interrupted (Ctrl-C) or terminated.`,
 				OnWrite:     serverWriteHook(writeLogger(out)),
 			})
 			if err != nil {
-				return fmt.Errorf("device file %s: %w", file, err)
+				return withExit(exitInvalidInput, fmt.Errorf("device file %s: %w", file, err))
 			}
 			device := describeServer(flagURL, srv)
 
@@ -197,7 +197,7 @@ until it is interrupted (Ctrl-C) or terminated.`,
 
 			cert, clientCAs, err := loadTLS(flagURL)
 			if err != nil {
-				return fmt.Errorf("serve: %w", err)
+				return withExit(exitInvalidInput, fmt.Errorf("serve: %w", err))
 			}
 			server, err := modbus.NewServer(&modbus.ServerConfig{
 				URL:           flagURL,
@@ -209,7 +209,7 @@ until it is interrupted (Ctrl-C) or terminated.`,
 				return fmt.Errorf("serve: %w", err)
 			}
 			if err := server.Start(); err != nil {
-				return fmt.Errorf("serve: listen on %s: %w", flagURL, err)
+				return withExit(exitTransport, fmt.Errorf("serve: listen on %s: %w", flagURL, err))
 			}
 			if flagJSON {
 				if err := printJSON(out, device); err != nil {
