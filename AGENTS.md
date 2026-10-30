@@ -30,6 +30,7 @@ This repository follows **otfabric/engineering policy 1.0**, profile **cli** (`.
 | When you change… | Run |
 |---|---|
 | anything | `make check` |
+| the command line, exit codes or `main` | `make e2e` (builds the binary and runs it) |
 | the coverage gate only | `make coverage-check` |
 
 ## Definition of Done
