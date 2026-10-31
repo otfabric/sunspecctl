@@ -452,7 +452,7 @@ Yes: [`sunspecctl serve`](#serving--simulating-a-device) runs a simulated device
 
 ### How do I use the output in a script?
 
-Add `--json` to any command for structured output suitable for `jq`. The exit status is 0 on success; [docs/exitcodes.md](docs/exitcodes.md) lists the others. `SUNSPECCTL_FORMAT=json` (or `SUNSPECCTL_OUTPUT_FORMAT`, `_FORMAT` wins) has the effect of `--json`.
+Add `--json` to any command for structured output suitable for `jq`. The exit status is 0 on success; [docs/exitcodes.md](docs/exitcodes.md) lists the others. [docs/json-output.md](docs/json-output.md) describes each document. `SUNSPECCTL_FORMAT=json` (or `SUNSPECCTL_OUTPUT_FORMAT`, `_FORMAT` wins) has the effect of `--json`.
 
 ### How are the model definitions kept up to date?
 
