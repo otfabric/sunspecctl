@@ -14,3 +14,7 @@
 
 # Coverage reports
 coverage.*
+
+# Build artefacts live in /bin/ and /release/ (otfabric/engineering REPO-005)
+*.test
+coverage.out
