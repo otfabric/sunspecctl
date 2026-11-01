@@ -1,5 +1,17 @@
 # sunspecctl Releases
 
+## v0.4.2
+
+**Date:** 2026-11-01
+**Previous release:** v0.4.1
+
+### Changed
+
+- Dependency update, no other change.
+- Built on go-modbus v1.10.3, go-sunspec v0.8.2, go-serial v0.2.1.
+
+---
+
 ## v0.4.1
 
 **Date:** 2026-10-31
