@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/otfabric/go-modbus v1.10.3
-	github.com/otfabric/go-sunspec v0.8.1
+	github.com/otfabric/go-sunspec v0.8.2
 	github.com/spf13/cobra v1.10.2
 )
 
