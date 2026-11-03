@@ -1,12 +1,12 @@
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/otfabric/go-modbus v1.10.5 h1:ZVs82MLukfzTVAkOlhq8nE9v1DJ3dLik9rJRVpERbMc=
-github.com/otfabric/go-modbus v1.10.5/go.mod h1:LciyfLtd+4wKhQrDV5TjdrRH3NB60A+5d9bzTtGHQW4=
+github.com/otfabric/go-modbus v1.10.6 h1:+ioZ6zejF+s16peVoWmYVYBTMTengVaV09mqx4sMlgM=
+github.com/otfabric/go-modbus v1.10.6/go.mod h1:LciyfLtd+4wKhQrDV5TjdrRH3NB60A+5d9bzTtGHQW4=
 github.com/otfabric/go-serial v0.2.1 h1:PCOdnCDAHIHFaxTBNmisC/4SlD+NVd74d+EJPnXrCOw=
 github.com/otfabric/go-serial v0.2.1/go.mod h1:TqbYpWWg6W+IuCLs8YM2cndlMAEaTyaKyUX6Z08gtq8=
-github.com/otfabric/go-sunspec v0.8.3 h1:xj6d2lcuhRW7KMvUBMHr+E+6YSbe9jKd4aXKUIdU4SY=
-github.com/otfabric/go-sunspec v0.8.3/go.mod h1:mGoLLTbPtiT5cUX3lRAon80wgENEU+/5vxOMDUJTRCk=
+github.com/otfabric/go-sunspec v0.8.5 h1:TIg5Dv+iWReFCzUEIoZChLJTMUQ+MsaulVuz76PhfLo=
+github.com/otfabric/go-sunspec v0.8.5/go.mod h1:ZCLzbxifXHMWtPVrbRllZgti4BKvlmwrv3JXi/gOcc8=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 h1:1EYB5IzjZawrrnELUi78f9fPu57HuXjmddZPjrls/28=
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.3/go.mod h1:JXeL+ps8p7/KNMjDQk3TCwPpBy0wYklyWTfbkIzdIFU=
