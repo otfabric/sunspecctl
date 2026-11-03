@@ -1,5 +1,16 @@
 # sunspecctl Releases
 
+## v0.4.4
+
+**Date:** 2026-11-03
+**Previous release:** v0.4.3
+
+### Changed
+
+- Built on go-modbus v1.10.6 (codec count checks compare the full length of a slice) and go-sunspec v0.8.5. No other change.
+
+---
+
 ## v0.4.3
 
 **Date:** 2026-11-01
