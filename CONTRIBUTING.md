@@ -19,7 +19,7 @@ Thank you for your interest in contributing to `sunspecctl`! This document cover
 
 ### Prerequisites
 
-- Go 1.23+ (see [go.mod](go.mod)); the code must build and pass on Go 1.23, so do not use newer language or standard-library features
+- Go 1.26+ (see [go.mod](go.mod)); the code must build and pass on Go 1.26, so do not use newer language or standard-library features
 - [staticcheck](https://staticcheck.dev/), [golangci-lint](https://golangci-lint.run/) and [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) for the checks
 - No hardware: tests use the SunSpec fixture server of go-sunspec's [`testutil`](https://pkg.go.dev/github.com/otfabric/go-sunspec/testutil) package, and `serve` itself running in-process
 
@@ -83,7 +83,7 @@ Examples:
 - Use go-sunspec's `testutil` package for anything that talks to a device: it serves a SunSpec model chain over Modbus TCP. For `serve`, start the command in-process on a free port (`startServe` in `serve_test.go`) and read it back with the other commands
 - A change to `capture`, `serve` or `template`, or a go-sunspec update, must keep `TestCaptureServeReproducesTheDevice` meaningful: capture → serve → read gives the same decoded values
 - Assert behaviour: the printed output, the JSON document, the returned error — not just that the code ran
-- Keep tests fast, deterministic and race-clean; CI runs them with `-race` on every Go version from 1.23 and a 120 s per-package timeout
+- Keep tests fast, deterministic and race-clean; CI runs them with `-race` on Go 1.26 and 1.27 and a 120 s per-package timeout
 - Coverage is enforced by `make check` and Codecov; new code should come with tests
 - If your change affects what is read from a device, verify against real hardware when possible and say which device in the pull request
 

@@ -457,7 +457,7 @@ func readPointCmd() *cobra.Command {
 // --- output helpers ---
 
 // printJSON writes v to out as indented JSON followed by a newline.
-func printJSON(out io.Writer, v interface{}) error {
+func printJSON(out io.Writer, v any) error {
 	enc := json.NewEncoder(out)
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)

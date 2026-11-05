@@ -64,8 +64,7 @@ func exitCode(err error) int {
 		errors.As(err, &ne) && ne.Timeout():
 		return exitTimeout
 	}
-	var ee *exitError
-	if errors.As(err, &ee) {
+	if ee, ok := errors.AsType[*exitError](err); ok {
 		return ee.code
 	}
 	switch {

@@ -1,6 +1,6 @@
 # sunspecctl — SunSpec Modbus Command-Line Tool for Solar Inverters, Meters and Batteries
 
-[![Go](https://img.shields.io/badge/Go-1.23%2B-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/otfabric/sunspecctl/actions/workflows/ci.yml/badge.svg)](https://github.com/otfabric/sunspecctl/actions/workflows/ci.yml)
 [![Code Coverage](https://codecov.io/gh/otfabric/sunspecctl/graph/badge.svg)](https://codecov.io/gh/otfabric/sunspecctl)
@@ -182,7 +182,7 @@ Run the same commands again. They always fetch the latest release and overwrite 
 
 ### With Go
 
-If you have Go 1.23 or later, you can build and install the latest release straight from source:
+If you have Go 1.26 or later, you can build and install the latest release straight from source:
 
 ```bash
 go install github.com/otfabric/sunspecctl@latest
@@ -477,7 +477,7 @@ Tests need no hardware: they run against the SunSpec fixture server of go-sunspe
 
 ## Requirements
 
-- Go 1.23+ to build from source (not needed for the pre-built binaries)
+- Go 1.26+ to build from source (not needed for the pre-built binaries)
 - [otfabric/go-sunspec](https://github.com/otfabric/go-sunspec) v0.6.0+ and [otfabric/go-modbus](https://github.com/otfabric/go-modbus) v1.5.0+
 
 ## Contributing

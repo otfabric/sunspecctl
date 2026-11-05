@@ -263,7 +263,7 @@ func TestServeExampleDevice(t *testing.T) {
 // without depending on its column widths.
 func normalizeTable(s string) string {
 	var out []string
-	for _, line := range strings.Split(s, "\n") {
+	for line := range strings.SplitSeq(s, "\n") {
 		out = append(out, strings.Join(strings.Fields(line), " "))
 	}
 	return strings.Join(out, "\n")
@@ -329,11 +329,11 @@ func TestReadmeDeviceFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(readme)
-	start := strings.Index(text, "```json\n")
-	if start < 0 {
+	_, after, ok := strings.Cut(text, "```json\n")
+	if !ok {
 		t.Fatal("README.md has no JSON example")
 	}
-	example := text[start+len("```json\n"):]
+	example := after
 	example = example[:strings.Index(example, "```")]
 	r := runCLI(t, "serve", "--check", "--file", writeFile(t, example), "--url", "tcp://127.0.0.1:1502")
 	if r.err != nil {
