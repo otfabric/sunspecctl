@@ -1,5 +1,30 @@
 # sunspecctl Releases
 
+## v0.5.0
+
+**Date:** 2026-11-05
+**Previous release:** v0.4.4
+
+### Security
+
+- Text output and error messages escape control characters, escape sequences, bidirectional overrides and invalid UTF-8 in device data (shown as `\x1b`, `\n`, `\u202e`, `\xff`), so a device can no longer clear the screen, set the window title or forge output lines. `serve`'s write log is escaped too. JSON output is unchanged.
+- `capture -o` and `template -o` write the file with mode 0600 through a temporary file and a rename, so the old file is kept if writing fails, and refuse a symbolic link or a non-regular file such as a directory or `/dev/null` (exit 10). `-o /dev/stdout` no longer works: leave out `-o` instead.
+- `serve --file` reads at most 16 MiB, and `--tls-cert`, `--tls-key` and `--tls-ca` at most 4 MiB each; a larger file is exit 3 "file too large".
+
+### Fixed
+
+- Ctrl-C or SIGTERM during discovery stops `poll`, `poll-model` and `poll-point` at once (exit 0), instead of after `--timeout`.
+- Text output that cannot be written exits 10 instead of 0, and `poll*` stops instead of polling on. JSON output already did this.
+- Usage errors (exit 2): a `--timeout` that is not positive (was exit 5), an `--interval` that is not positive (polled with no pause), a negative `--count` (exit 0 with no output) and `--unit-id 0` on client commands (silently read unit 1).
+- The docs said `detect` on a device without the SunSpec marker prints `Detected: false` and exits 0; it exits 1 and prints no result, as before.
+
+### Changed
+
+- Go 1.26 or later is required to build from source (was 1.23).
+- Built on go-sunspec v0.9.0 (scale factors outside -10..10 are not applied) and go-modbus v1.11.1 (serial, UDP and server fixes).
+
+---
+
 ## v0.4.4
 
 **Date:** 2026-11-03

@@ -131,8 +131,9 @@ func jsonDocuments(t *testing.T, s string) int {
 	}
 }
 
-// A scale factor far outside SunSpec's -10..10 overflows the scaled value to
-// infinity, or to NaN for a raw value of zero.
+// A scale factor outside SunSpec's -10..10 is not applied (go-sunspec v0.9.0):
+// the point keeps its raw value and has no scaled value, in JSON and in text.
+// Before, it overflowed the scaled value to infinity, or to NaN for zero.
 func TestHostileScaleFactorOverflow(t *testing.T) {
 	common := newModel(t, 1, 0).str("Mn", "Acme")
 	inv := newModel(t, 101, 0).
@@ -145,14 +146,16 @@ func TestHostileScaleFactorOverflow(t *testing.T) {
 	var model map[string]any
 	decodeJSON(t, r, &model)
 	pts := jsonPoints(t, model)
-	if pts["W"]["ScaledValue"] != nil || pts["A"]["ScaledValue"] != nil || pts["Hz"]["ScaledValue"] != float64(0) {
-		t.Errorf("ScaledValue: W %#v, A %#v, Hz %#v", pts["W"]["ScaledValue"], pts["A"]["ScaledValue"], pts["Hz"]["ScaledValue"])
+	for _, name := range []string{"W", "A", "Hz"} {
+		if pts[name]["ScaledValue"] != nil || pts[name]["SFRawValue"] != nil {
+			t.Errorf("%s: scale factor applied: %v", name, pts[name])
+		}
 	}
-	if pts["W"]["RawValue"] != float64(5) || pts["W"]["SFRawValue"] != float64(32767) {
-		t.Errorf("W: %v", pts["W"])
+	if pts["W"]["RawValue"] != float64(5) || pts["Hz"]["RawValue"] != float64(5001) {
+		t.Errorf("raw values: W %v, Hz %v", pts["W"]["RawValue"], pts["Hz"]["RawValue"])
 	}
 	r = runCLI(t, "read-point", "--model", "101", "--point", "W", "--url", url)
-	if r.err != nil || !strings.Contains(r.stdout, "Scaled:  +Inf\n") {
+	if r.err != nil || !strings.Contains(r.stdout, "Raw:     5\n") || strings.Contains(r.stdout, "Inf") {
 		t.Errorf("text: %v\n%s", r.err, r.stdout)
 	}
 }
