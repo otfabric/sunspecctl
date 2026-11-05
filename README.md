@@ -1,6 +1,6 @@
 # sunspecctl — SunSpec Modbus Command-Line Tool for Solar Inverters, Meters and Batteries
 
-[![Go](https://img.shields.io/badge/Go-1.23%2B-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/otfabric/sunspecctl/actions/workflows/ci.yml/badge.svg)](https://github.com/otfabric/sunspecctl/actions/workflows/ci.yml)
 [![Code Coverage](https://codecov.io/gh/otfabric/sunspecctl/graph/badge.svg)](https://codecov.io/gh/otfabric/sunspecctl)
@@ -182,7 +182,7 @@ Run the same commands again. They always fetch the latest release and overwrite 
 
 ### With Go
 
-If you have Go 1.23 or later, you can build and install the latest release straight from source:
+If you have Go 1.26 or later, you can build and install the latest release straight from source:
 
 ```bash
 go install github.com/otfabric/sunspecctl@latest
@@ -203,8 +203,8 @@ The existing commands, their flags and their output are unchanged.
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--url` | `tcp://localhost:502` | Modbus device URL |
-| `--unit-id` | `1` | Modbus unit ID |
-| `--timeout` | `10s` | Operation timeout |
+| `--unit-id` | `1` | Modbus unit ID, 1–255 |
+| `--timeout` | `10s` | Operation timeout, a positive duration |
 | `--json` | `false` | Output as JSON |
 | `--raw` | `false` | Include raw register hex in output |
 | `--baud` | `0` (19200) | Serial baud rate, for `rtu://` and `ascii://` URLs |
@@ -252,8 +252,8 @@ The `poll`, `poll-model`, and `poll-point` commands work like their `read` count
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--interval` | `30s` | Interval between polls (supports `s`, `m`, `h`) |
-| `--count` | `0` | Number of polls (`0` = infinite, stop with Ctrl-C) |
+| `--interval` | `30s` | Interval between polls, a positive duration (supports `ms`, `s`, `m`, `h`) |
+| `--count` | `0` | Number of polls (`0` = infinite, stop with Ctrl-C); not negative |
 
 ```bash
 # Poll all models every 10 seconds
@@ -379,6 +379,8 @@ sunspecctl serve --file device.json --check
 
 `capture` writes models that decode cleanly as point values, which are easy to read and edit. A model without a known schema, or one that does not match its schema exactly (shorter, longer, a value that would not read back the same), is written as `registers`. Either way, serving the file gives a device that reads the same as the original: the same points, values, scale factors and not-implemented points at the same addresses. With `--raw`, every model is written as `registers` and the copy is register-for-register identical. `capture` writes enum and bitfield points as numbers, so that values the model definition does not name survive.
 
+With `-o`, the file is written with mode 0600 to a temporary file next to it and then renamed into place, so an existing file is replaced whole or not at all. `-o` refuses a symbolic link and anything that is not a regular file (a directory, `/dev/null`); leave out `-o` to write to standard output. A device file `serve` reads may be at most 16 MiB.
+
 A capture is a snapshot: the served values do not change by themselves. It can contain serial numbers and network addresses of the device; look before you share it.
 
 ### Unit IDs
@@ -477,7 +479,7 @@ Tests need no hardware: they run against the SunSpec fixture server of go-sunspe
 
 ## Requirements
 
-- Go 1.23+ to build from source (not needed for the pre-built binaries)
+- Go 1.26+ to build from source (not needed for the pre-built binaries)
 - [otfabric/go-sunspec](https://github.com/otfabric/go-sunspec) v0.6.0+ and [otfabric/go-modbus](https://github.com/otfabric/go-modbus) v1.5.0+
 
 ## Contributing

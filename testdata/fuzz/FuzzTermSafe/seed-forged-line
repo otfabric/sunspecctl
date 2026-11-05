@@ -1,0 +1,2 @@
+go test fuzz v1
+string("\x1b[31mred\r\nwrite from 6.6.6.6: forged")

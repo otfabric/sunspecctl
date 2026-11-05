@@ -48,7 +48,7 @@ With `read` and `poll`, a model that cannot be read gives `warning: partial read
 }
 ```
 
-`Detected: false` is a result: `detect` exits 0. `RegType` is go-modbus's number for the table, with 0 for holding registers. `Marker` holds the two registers of "SunS". There is one `Attempts` entry per probed base address; `error` is its only lower-case field, and is left out when the read worked.
+`detect` prints this document only when it found the marker, so `Detected` is always true. A device that answers but has no marker at any probed address is not a result: `detect` prints nothing on stdout, the error on stderr, and exits 1 ([exit codes](exitcodes.md)). `RegType` is go-modbus's number for the table, with 0 for holding registers. `Marker` holds the two registers of "SunS". There is one `Attempts` entry per probed base address; `error` is its only lower-case field, and is left out when the read worked.
 
 ## Discovery
 
@@ -109,6 +109,10 @@ With `read` and `poll`, a model that cannot be read gives `warning: partial read
 ```
 
 `RawValue` is the value in the registers, with the type of `Type`: a number, or a string for string points. `ScaledValue` is `RawValue` times 10 to the power of `SFRawValue`, and null when that does not apply: no scale factor, or a point that is not implemented. `Implemented` is false when the device reports the SunSpec "not implemented" value, and `RawValue` then holds that value (-32768 for `int16`). `Symbols` lists the names of the set bits or of the enum value, or is null.
+
+JSON has no NaN or infinity: a float `RawValue`, or a `ScaledValue`, that is not a finite number is null. A float point the device reports as NaN is SunSpec's "not implemented" (`Implemented` false); an infinite one keeps `Implemented` true with a null `RawValue`. The model's `RawRegisters` hold the registers as read.
+
+Strings are written as the device sent them, escaped as JSON escapes them. Text output escapes what a terminal would act on instead: control characters as `\x1b`, `\t`, `\n`, `\r`, other non-printable characters such as bidirectional overrides as `\u202e`, and bytes that are not UTF-8 as `\xff`. Error messages on stderr are escaped the same way.
 
 ## Served device
 

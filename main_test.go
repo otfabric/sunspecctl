@@ -122,7 +122,7 @@ func newModel(t *testing.T, id uint16, instances int) *modelBuilder {
 	}
 	b := &modelBuilder{t: t, meta: meta}
 	b.fill(meta.Group)
-	for i := 0; i < instances; i++ {
+	for range instances {
 		b.fill(meta.Group.Groups[0])
 	}
 	b.regs[0] = id
@@ -145,7 +145,7 @@ func (b *modelBuilder) fill(g *registry.GroupMeta) int {
 func (b *modelBuilder) add(path string, vals map[string][]uint16) *modelBuilder {
 	b.t.Helper()
 	g := b.meta.Group
-	for _, name := range strings.Split(path, "/") {
+	for name := range strings.SplitSeq(path, "/") {
 		if g = g.Group(name); g == nil {
 			b.t.Fatalf("model %d has no group %s", b.meta.ID, path)
 		}
@@ -367,7 +367,7 @@ func wantFail(t *testing.T, r result, msg string) {
 }
 
 // decodeJSON decodes stdout, which must hold exactly one JSON document.
-func decodeJSON(t *testing.T, r result, v interface{}) {
+func decodeJSON(t *testing.T, r result, v any) {
 	t.Helper()
 	if r.err != nil {
 		t.Fatalf("unexpected error: %v\nstderr: %s", r.err, r.stderr)
@@ -1293,7 +1293,7 @@ func TestPrintDecodedModelRawWrapsAtSixteen(t *testing.T) {
 }
 
 func TestPrintJSONReportsEncodingErrors(t *testing.T) {
-	if err := printJSON(io.Discard, map[string]interface{}{"f": func() {}}); err == nil {
+	if err := printJSON(io.Discard, map[string]any{"f": func() {}}); err == nil {
 		t.Error("printJSON of an unencodable value returned no error")
 	}
 	var out bytes.Buffer
