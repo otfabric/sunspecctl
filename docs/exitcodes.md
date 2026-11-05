@@ -5,15 +5,15 @@ sunspecctl's exit codes are a script-facing contract (`exit.go`). They follow th
 | Code | Kind | Meaning |
 |------|------|---------|
 | 0 | ok | Success. `poll` and `serve` also exit 0 after SIGINT or SIGTERM |
-| 1 | findings | The device answered and is not a SunSpec device (`detect` itself reports this as a result and exits 0) |
-| 2 | usage | Unknown command or flag, missing argument, invalid serial setting, an invalid `SUNSPECCTL_FORMAT` |
-| 3 | invalid_input | An invalid URL, device file, TLS file, unknown point name, or a model without a schema for `template` |
+| 1 | findings | The device answered and is not a SunSpec device: no probed base address holds the "SunS" marker. This includes `detect`, which then prints no result |
+| 2 | usage | Unknown command or flag, missing argument, invalid serial setting, an invalid `SUNSPECCTL_FORMAT`, a `--timeout` or `--interval` that is not positive, a negative `--count`, `--unit-id 0` for a client command |
+| 3 | invalid_input | An invalid URL, device file, TLS file (also one over its size limit: 16 MiB for a device file, 4 MiB for a PEM file), unknown point name, or a model without a schema for `template` |
 | 4 | transport | Connecting failed or the connection was lost; `serve` cannot listen |
 | 5 | timeout | `--timeout` passed |
 | 6 | protocol | A Modbus exception, a malformed frame, registers that do not decode as SunSpec |
 | 8 | unsupported | The device does not have the requested model |
 | 9 | permission | The operating system refused an operation |
-| 10 | internal | The output could not be written, or something unexpected happened |
+| 10 | internal | The output could not be written (standard output, text or JSON, or the `-o` file of `capture` and `template`, also when it is a symbolic link or not a regular file), or something unexpected happened |
 | 130 | interrupted | SIGINT or SIGTERM before a result |
 
 Exit 7 (partial) is not used.

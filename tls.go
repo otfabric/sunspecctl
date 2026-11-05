@@ -7,8 +7,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"strings"
-
-	"github.com/otfabric/go-modbus"
 )
 
 // TLS settings, used with tcp+tls:// URLs only (Modbus/TCP Security, which is
@@ -47,13 +45,27 @@ func loadTLS(url string) (*tls.Certificate, *x509.CertPool, error) {
 	if len(missing) > 0 {
 		return nil, nil, withExit(exitUsage, fmt.Errorf("a tcp+tls:// URL needs %s", strings.Join(missing, ", ")))
 	}
-	cert, err := tls.LoadX509KeyPair(flagTLSCert, flagTLSKey)
+	// The files are read with a size limit, then parsed as
+	// tls.LoadX509KeyPair and modbus.LoadCertPool would.
+	certPEM, err := readFileLimited(flagTLSCert, maxPEMFileSize)
 	if err != nil {
 		return nil, nil, withExit(exitInvalidInput, fmt.Errorf("--tls-cert/--tls-key: %w", err))
 	}
-	pool, err := modbus.LoadCertPool(flagTLSCA)
+	keyPEM, err := readFileLimited(flagTLSKey, maxPEMFileSize)
+	if err != nil {
+		return nil, nil, withExit(exitInvalidInput, fmt.Errorf("--tls-cert/--tls-key: %w", err))
+	}
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return nil, nil, withExit(exitInvalidInput, fmt.Errorf("--tls-cert/--tls-key: %w", err))
+	}
+	caPEM, err := readFileLimited(flagTLSCA, maxPEMFileSize)
 	if err != nil {
 		return nil, nil, withExit(exitInvalidInput, fmt.Errorf("--tls-ca: %w", err))
+	}
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(caPEM) {
+		return nil, nil, withExit(exitInvalidInput, fmt.Errorf("--tls-ca: %s: no certificate found", flagTLSCA))
 	}
 	return &cert, pool, nil
 }

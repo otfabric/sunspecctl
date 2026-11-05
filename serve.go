@@ -130,10 +130,24 @@ func writeLogger(out io.Writer) func(*sunspec.ServerWrite) {
 			if p.Implemented && len(p.Symbols) > 0 {
 				val += " [" + strings.Join(p.Symbols, ", ") + "]"
 			}
-			parts = append(parts, p.Name+" = "+val)
+			parts = append(parts, termSafe(p.Name+" = "+val))
 		}
-		_, _ = fmt.Fprintf(out, "write from %s: model %d at %d: %s\n", w.ClientAddr, w.ModelID, w.Address, strings.Join(parts, ", "))
+		_, _ = fmt.Fprintf(out, "write from %s: model %d at %d: %s\n", termSafe(w.ClientAddr), w.ModelID, w.Address, strings.Join(parts, ", "))
 	}
+}
+
+// loadDeviceFile reads and parses a device file as devicefile.Load does, but
+// reads at most maxDeviceFileSize bytes.
+func loadDeviceFile(path string) (*devicefile.File, error) {
+	data, err := readFileLimited(path, maxDeviceFileSize)
+	if err != nil {
+		return nil, err
+	}
+	df, err := devicefile.Parse(data)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return df, nil
 }
 
 // serveCmd returns the command that runs a SunSpec device from a file.
@@ -164,7 +178,7 @@ SunSpec defines as writable. Accepted writes are printed. The device runs
 until it is interrupted (Ctrl-C) or terminated.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			df, err := devicefile.Load(file)
+			df, err := loadDeviceFile(file)
 			if err != nil {
 				return withExit(exitInvalidInput, fmt.Errorf("device file: %w", err))
 			}
@@ -191,8 +205,9 @@ until it is interrupted (Ctrl-C) or terminated.`,
 				if flagJSON {
 					return printJSON(out, device)
 				}
-				printServedDevice(out, "Valid", device)
-				return nil
+				w := newOutputWriter(out)
+				printServedDevice(w, "Valid", device)
+				return w.result()
 			}
 
 			cert, clientCAs, err := loadTLS(flagURL)
@@ -217,7 +232,12 @@ until it is interrupted (Ctrl-C) or terminated.`,
 					return err
 				}
 			} else {
-				printServedDevice(out, "Serving", device)
+				w := newOutputWriter(out)
+				printServedDevice(w, "Serving", device)
+				if err := w.result(); err != nil {
+					_ = server.Stop()
+					return err
+				}
 			}
 
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)

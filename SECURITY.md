@@ -35,6 +35,7 @@ SunSpec devices are read, and with `sunspecctl serve` simulated, over Modbus, wh
 ### Data Read From Devices Is Untrusted Input
 
 - Model IDs, lengths, strings and values come from the device. Discovery is bounded and lengths are validated before decoding, but treat what `sunspecctl` prints as untrusted: validate ranges before using values for control decisions, and escape strings (manufacturer, model, serial number) before putting them in HTML, SQL or shell commands
+- Text output and error messages escape what a terminal would act on in device data (control characters and escape sequences, bidirectional overrides, bytes that are not UTF-8), so a device cannot clear the screen, set the window title or forge output lines. JSON output keeps the strings as sent, JSON-escaped
 - `sunspecctl` output can contain serial numbers, network addresses and production figures; treat it as sensitive operational data when storing or sharing it
 
 ### Reading Only, as a Client
@@ -47,7 +48,7 @@ As a client `sunspecctl` reads and decodes; no command writes SunSpec control po
 
 - **Listen on the loopback address unless others must reach it**: `--url tcp://127.0.0.1:1502`. `tcp://0.0.0.0:...` and `tcp://[::]:...` accept connections from every network the machine is on. Never expose a served device to the Internet
 - **Do not run a simulator on a production network** where a controller or a monitoring system could take it for real equipment: a device file made with `capture` carries the manufacturer, model and serial number of the original
-- **A captured device file is operational data**: it can contain serial numbers, network addresses, settings and production figures. Check it before sharing or committing it
+- **A captured device file is operational data**: it can contain serial numbers, network addresses, settings and production figures. `capture -o` writes it with mode 0600 and never through a symbolic link. Check it before sharing or committing it
 - Device files are parsed and validated before anything is served, but only serve files you wrote or reviewed
 
 ### Dependencies

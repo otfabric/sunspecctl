@@ -46,6 +46,19 @@ func pollLoop(ctx context.Context, interval time.Duration, count int, fn func(ct
 	return nil
 }
 
+// checkPollFlags rejects an --interval or --count that cannot be meant: a
+// zero or negative interval would poll the device as fast as it answers, and
+// a negative count would end without a single poll.
+func checkPollFlags(interval time.Duration, count int) error {
+	if interval <= 0 {
+		return withExit(exitUsage, fmt.Errorf("invalid --interval %s: use a positive duration such as 5s", interval))
+	}
+	if count < 0 {
+		return withExit(exitUsage, fmt.Errorf("invalid --count %d: use 0 (poll until interrupted) or more", count))
+	}
+	return nil
+}
+
 // pollCmd returns the command that repeatedly reads and prints every model.
 func pollCmd() *cobra.Command {
 	var (
@@ -57,24 +70,30 @@ func pollCmd() *cobra.Command {
 		Use:   "poll",
 		Short: "Repeatedly read and decode all models",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := checkPollFlags(interval, count); err != nil {
+				return err
+			}
 			client, cleanup, err := newClient()
 			if err != nil {
 				return err
 			}
 			defer cleanup()
 
-			ctx, cancel := context.WithTimeout(context.Background(), flagTimeout)
+			ctx, cancel := context.WithTimeout(cmd.Context(), flagTimeout)
 			device, err := sunspec.Discover(ctx, client, discoverOpts())
 			cancel()
 			if err != nil {
+				if cmd.Context().Err() != nil {
+					return nil // interrupted: a poll ends without error, see pollLoop
+				}
 				return fmt.Errorf("discover: %w", err)
 			}
 
-			out := cmd.OutOrStdout()
+			out := newOutputWriter(cmd.OutOrStdout())
 			return pollLoop(cmd.Context(), interval, count, func(ctx context.Context, iteration int) error {
 				results, err := device.ReadAll(ctx)
 				if err != nil {
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: partial read: %v\n", err)
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: partial read: %s\n", termSafe(err.Error()))
 				}
 
 				if flagJSON {
@@ -85,7 +104,7 @@ func pollCmd() *cobra.Command {
 				for _, dm := range results {
 					printDecodedModel(out, dm)
 				}
-				return nil
+				return out.result()
 			})
 		},
 	}
@@ -107,20 +126,26 @@ func pollModelCmd() *cobra.Command {
 		Use:   "poll-model",
 		Short: "Repeatedly read and decode a specific model by ID",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := checkPollFlags(interval, count); err != nil {
+				return err
+			}
 			client, cleanup, err := newClient()
 			if err != nil {
 				return err
 			}
 			defer cleanup()
 
-			ctx, cancel := context.WithTimeout(context.Background(), flagTimeout)
+			ctx, cancel := context.WithTimeout(cmd.Context(), flagTimeout)
 			device, err := sunspec.Discover(ctx, client, discoverOpts())
 			cancel()
 			if err != nil {
+				if cmd.Context().Err() != nil {
+					return nil // interrupted: a poll ends without error, see pollLoop
+				}
 				return fmt.Errorf("discover: %w", err)
 			}
 
-			out := cmd.OutOrStdout()
+			out := newOutputWriter(cmd.OutOrStdout())
 			return pollLoop(cmd.Context(), interval, count, func(ctx context.Context, iteration int) error {
 				dm, err := device.ReadModelByID(ctx, modelID)
 				if err != nil {
@@ -133,7 +158,7 @@ func pollModelCmd() *cobra.Command {
 
 				_, _ = fmt.Fprintf(out, "--- poll %d @ %s ---\n", iteration, time.Now().Format(time.RFC3339))
 				printDecodedModel(out, dm)
-				return nil
+				return out.result()
 			})
 		},
 	}
@@ -158,16 +183,22 @@ func pollPointCmd() *cobra.Command {
 		Use:   "poll-point",
 		Short: "Repeatedly read a single named point from a model",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := checkPollFlags(interval, count); err != nil {
+				return err
+			}
 			client, cleanup, err := newClient()
 			if err != nil {
 				return err
 			}
 			defer cleanup()
 
-			ctx, cancel := context.WithTimeout(context.Background(), flagTimeout)
+			ctx, cancel := context.WithTimeout(cmd.Context(), flagTimeout)
 			device, err := sunspec.Discover(ctx, client, discoverOpts())
 			cancel()
 			if err != nil {
+				if cmd.Context().Err() != nil {
+					return nil // interrupted: a poll ends without error, see pollLoop
+				}
 				return fmt.Errorf("discover: %w", err)
 			}
 
@@ -176,7 +207,7 @@ func pollPointCmd() *cobra.Command {
 				return withExit(exitUnsupported, fmt.Errorf("model %d not found", modelID))
 			}
 
-			out := cmd.OutOrStdout()
+			out := newOutputWriter(cmd.OutOrStdout())
 			return pollLoop(cmd.Context(), interval, count, func(ctx context.Context, iteration int) error {
 				dp, err := device.ReadPoint(ctx, *inst, pointName)
 				if err != nil {
@@ -189,7 +220,7 @@ func pollPointCmd() *cobra.Command {
 
 				_, _ = fmt.Fprintf(out, "--- poll %d @ %s ---\n", iteration, time.Now().Format(time.RFC3339))
 				printPoint(out, dp)
-				return nil
+				return out.result()
 			})
 		},
 	}

@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -95,6 +96,13 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(detectCmd(), modelsCmd(), readCmd(), readModelCmd(), readPointCmd(), pollCmd(), pollModelCmd(), pollPointCmd(),
 		serveCmd(), captureCmd(), templateCmd(), completionCmd(root), versionCmd())
 
+	// Errors can quote what a device or a file holds: escape what a terminal
+	// would act on before cobra prints them.
+	for _, c := range root.Commands() {
+		if run := c.RunE; run != nil {
+			c.RunE = func(cmd *cobra.Command, args []string) error { return safeError(run(cmd, args)) }
+		}
+	}
 	return root
 }
 
@@ -172,6 +180,14 @@ func clientConfig() (modbus.Config, error) {
 	if flagStopBits > 2 {
 		return conf, withExit(exitUsage, fmt.Errorf("invalid --stop-bits %d: use 1 or 2", flagStopBits))
 	}
+	if flagTimeout <= 0 {
+		return conf, withExit(exitUsage, fmt.Errorf("invalid --timeout %s: use a positive duration such as 10s", flagTimeout))
+	}
+	if flagUnitID == 0 {
+		// go-sunspec reads unit 1 for unit ID 0: refuse rather than read
+		// another unit than the one asked for.
+		return conf, withExit(exitUsage, errors.New("invalid --unit-id 0: that is the Modbus broadcast address, which a device does not answer; use 1-255"))
+	}
 	cert, pool, err := loadTLS(flagURL)
 	if err != nil {
 		return conf, err
@@ -209,8 +225,8 @@ func versionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Print the sunspecctl version",
-		Run: func(cmd *cobra.Command, args []string) {
-			out := cmd.OutOrStdout()
+		RunE: func(cmd *cobra.Command, args []string) error {
+			out := newOutputWriter(cmd.OutOrStdout())
 			if flagJSON {
 				info := map[string]string{"version": version}
 				if tag != "" {
@@ -222,8 +238,7 @@ func versionCmd() *cobra.Command {
 				if buildDate != "" {
 					info["buildDate"] = buildDate
 				}
-				_ = printJSON(out, info)
-				return
+				return printJSON(out, info)
 			}
 			_, _ = fmt.Fprintf(out, "sunspecctl %s\n", version)
 			if tag != "" {
@@ -235,6 +250,7 @@ func versionCmd() *cobra.Command {
 			if buildDate != "" {
 				_, _ = fmt.Fprintf(out, "built:     %s\n", buildDate)
 			}
+			return out.result()
 		},
 	}
 }
@@ -265,14 +281,14 @@ func detectCmd() *cobra.Command {
 				return printJSON(cmd.OutOrStdout(), result)
 			}
 
-			out := cmd.OutOrStdout()
+			out := newOutputWriter(cmd.OutOrStdout())
 			_, _ = fmt.Fprintf(out, "Detected:     %v\n", result.Detected)
 			_, _ = fmt.Fprintf(out, "Unit ID:      %d\n", result.UnitID)
 			_, _ = fmt.Fprintf(out, "Base Address: %d\n", result.BaseAddress)
 			_, _ = fmt.Fprintf(out, "Reg Type:     %d\n", result.RegType)
 			_, _ = fmt.Fprintf(out, "Marker:       0x%04X 0x%04X\n", result.Marker[0], result.Marker[1])
 			_, _ = fmt.Fprintf(out, "Attempts:     %d\n", len(result.Attempts))
-			return nil
+			return out.result()
 		},
 	}
 }
@@ -303,7 +319,8 @@ func modelsCmd() *cobra.Command {
 				return printJSON(cmd.OutOrStdout(), device.Discovery)
 			}
 
-			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
+			out := newOutputWriter(cmd.OutOrStdout())
+			w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
 			_, _ = fmt.Fprintln(w, "ID\tNAME\tSTART\tLENGTH\tSCHEMA")
 			for _, m := range device.Discovery.Models {
 				schema := "yes"
@@ -311,10 +328,10 @@ func modelsCmd() *cobra.Command {
 					schema = "no"
 				}
 				_, _ = fmt.Fprintf(w, "%d\t%s\t%d\t%d\t%s\n",
-					m.Header.ID, m.Name, m.Header.StartAddress, m.Header.Length, schema)
+					m.Header.ID, termSafe(m.Name), m.Header.StartAddress, m.Header.Length, schema)
 			}
 			_ = w.Flush()
-			return nil
+			return out.result()
 		},
 	}
 }
@@ -343,17 +360,18 @@ func readCmd() *cobra.Command {
 
 			results, err := device.ReadAll(ctx)
 			if err != nil {
-				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: partial read: %v\n", err)
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: partial read: %s\n", termSafe(err.Error()))
 			}
 
 			if flagJSON {
 				return printJSON(cmd.OutOrStdout(), results)
 			}
 
+			out := newOutputWriter(cmd.OutOrStdout())
 			for _, dm := range results {
-				printDecodedModel(cmd.OutOrStdout(), dm)
+				printDecodedModel(out, dm)
 			}
-			return nil
+			return out.result()
 		},
 	}
 }
@@ -391,8 +409,9 @@ func readModelCmd() *cobra.Command {
 				return printJSON(cmd.OutOrStdout(), dm)
 			}
 
-			printDecodedModel(cmd.OutOrStdout(), dm)
-			return nil
+			out := newOutputWriter(cmd.OutOrStdout())
+			printDecodedModel(out, dm)
+			return out.result()
 		},
 	}
 
@@ -442,8 +461,9 @@ func readPointCmd() *cobra.Command {
 				return printJSON(cmd.OutOrStdout(), dp)
 			}
 
-			printPoint(cmd.OutOrStdout(), dp)
-			return nil
+			out := newOutputWriter(cmd.OutOrStdout())
+			printPoint(out, dp)
+			return out.result()
 		},
 	}
 
@@ -466,17 +486,17 @@ func printJSON(out io.Writer, v any) error {
 // printPoint writes a single point as "Key: value" lines. With --raw it also
 // prints the point's register offset and count.
 func printPoint(out io.Writer, dp *sunspec.DecodedPoint) {
-	_, _ = fmt.Fprintf(out, "Point:   %s\n", dp.Name)
-	_, _ = fmt.Fprintf(out, "Type:    %s\n", dp.Type)
-	_, _ = fmt.Fprintf(out, "Raw:     %v\n", dp.RawValue)
+	_, _ = fmt.Fprintf(out, "Point:   %s\n", termSafe(dp.Name))
+	_, _ = fmt.Fprintf(out, "Type:    %s\n", termSafe(dp.Type))
+	_, _ = fmt.Fprintf(out, "Raw:     %s\n", termSafe(fmt.Sprint(dp.RawValue)))
 	if dp.ScaledValue != nil {
 		_, _ = fmt.Fprintf(out, "Scaled:  %g\n", *dp.ScaledValue)
 	}
 	if dp.Units != "" {
-		_, _ = fmt.Fprintf(out, "Units:   %s\n", dp.Units)
+		_, _ = fmt.Fprintf(out, "Units:   %s\n", termSafe(dp.Units))
 	}
 	if len(dp.Symbols) > 0 {
-		_, _ = fmt.Fprintf(out, "Symbols: %s\n", strings.Join(dp.Symbols, ", "))
+		_, _ = fmt.Fprintf(out, "Symbols: %s\n", termSafe(strings.Join(dp.Symbols, ", ")))
 	}
 	if flagRaw {
 		_, _ = fmt.Fprintf(out, "Offset:  %d\n", dp.RegisterOffset)
@@ -489,7 +509,7 @@ func printPoint(out io.Writer, dp *sunspec.DecodedPoint) {
 // indented under the group that contains them. With --raw it also dumps the
 // model's raw registers in hex.
 func printDecodedModel(out io.Writer, dm *sunspec.DecodedModel) {
-	_, _ = fmt.Fprintf(out, "=== Model %d: %s ===\n", dm.ModelID, dm.Name)
+	_, _ = fmt.Fprintf(out, "=== Model %d: %s ===\n", dm.ModelID, termSafe(dm.Name))
 
 	if dm.Group != nil {
 		printGroup(out, "Fixed", dm.Group, "  ")
@@ -507,7 +527,7 @@ func printDecodedModel(out io.Writer, dm *sunspec.DecodedModel) {
 	}
 
 	for _, w := range dm.Warnings {
-		_, _ = fmt.Fprintf(out, "  WARNING: %s\n", w)
+		_, _ = fmt.Fprintf(out, "  WARNING: %s\n", termSafe(w))
 	}
 	_, _ = fmt.Fprintln(out)
 }
@@ -517,13 +537,13 @@ func printDecodedModel(out io.Writer, dm *sunspec.DecodedModel) {
 // then the instances nested inside it, labelled "name index" and indented one
 // level deeper.
 func printGroup(out io.Writer, label string, g *sunspec.DecodedGroup, indent string) {
-	_, _ = fmt.Fprintf(out, "%s[%s]\n", indent, label)
+	_, _ = fmt.Fprintf(out, "%s[%s]\n", indent, termSafe(label))
 	w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
 	for _, p := range g.Points {
 		if !p.Implemented {
 			continue
 		}
-		val := fmt.Sprintf("%v", p.RawValue)
+		val := fmt.Sprint(p.RawValue)
 		if p.ScaledValue != nil {
 			val = fmt.Sprintf("%g", *p.ScaledValue)
 		}
@@ -534,7 +554,7 @@ func printGroup(out io.Writer, label string, g *sunspec.DecodedGroup, indent str
 		if len(p.Symbols) > 0 {
 			extra += " [" + strings.Join(p.Symbols, ", ") + "]"
 		}
-		_, _ = fmt.Fprintf(w, "%s  %s\t%s\t%s%s\n", indent, p.Name, p.Type, val, extra)
+		_, _ = fmt.Fprintf(w, "%s  %s\t%s\t%s\n", indent, termSafe(p.Name), termSafe(p.Type), termSafe(val+extra))
 	}
 	_ = w.Flush()
 	for _, c := range g.Groups {

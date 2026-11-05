@@ -103,10 +103,16 @@ The file goes to standard output, or to the file named with --output.`,
 }
 
 // writeDeviceFile writes the file as indented JSON, to the named file or,
-// when path is empty, to out.
+// when path is empty, to out. A named file is written as writeFileAtomic
+// does: mode 0600, since a capture holds serial numbers and addresses, never
+// through a symbolic link, and never half.
 func writeDeviceFile(out io.Writer, path string, file *devicefile.File) error {
 	if path == "" {
 		return file.Write(out)
 	}
-	return file.WriteFile(path)
+	data, err := file.Marshal()
+	if err != nil {
+		return err
+	}
+	return writeFileAtomic(path, data)
 }
