@@ -1,5 +1,16 @@
 # sunspecctl Releases
 
+## v0.5.1
+
+**Date:** 2026-11-06
+**Previous release:** v0.5.0
+
+### Changed
+
+- Built on go-sunspec v0.10.0, which adds `Device.WritePoint` to the library. The commands do not use it: the client commands still read only. No other change.
+
+---
+
 ## v0.5.0
 
 **Date:** 2026-11-05
