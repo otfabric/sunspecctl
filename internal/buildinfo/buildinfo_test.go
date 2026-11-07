@@ -139,3 +139,12 @@ func TestLibrariesFormatting(t *testing.T) {
 		}
 	}
 }
+
+func TestSetReplacesLinkTimeValues(t *testing.T) {
+	setVars(t, "", "", "", "", nil)
+	Set("v1.2.3", "v1.2.3", "abc123", "2026-11-07T10:00:00Z")
+	got := Get("tool")
+	if got.Version != "1.2.3" || got.Tag != "v1.2.3" || got.Commit != "abc123" || got.Built != "2026-11-07T10:00:00Z" {
+		t.Fatalf("after Set: %+v", got)
+	}
+}

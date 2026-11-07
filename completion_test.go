@@ -101,3 +101,37 @@ func TestEveryValueFlagCompletes(t *testing.T) {
 	}
 	walk(newRootCmd())
 }
+
+// TestRegisterKeepsOwnCompletion: a flag whose command registered a completion
+// itself keeps it; the walker fills in only the flags without one.
+func TestRegisterKeepsOwnCompletion(t *testing.T) {
+	c := &cobra.Command{Use: "x", Run: func(*cobra.Command, []string) {}}
+	c.Flags().String("parity", "", "parity")
+	own := cobra.FixedCompletions([]string{"mine"}, cobra.ShellCompDirectiveNoFileComp)
+	if err := c.RegisterFlagCompletionFunc("parity", own); err != nil {
+		t.Fatal(err)
+	}
+	registerCompletions(c)
+	fn, ok := c.GetFlagCompletionFunc("parity")
+	if !ok {
+		t.Fatal("--parity lost its completion")
+	}
+	if got, _ := fn(c, nil, ""); !slices.Equal(got, []string{"mine"}) {
+		t.Fatalf("--parity completes %v, want the command's own [mine]", got)
+	}
+}
+
+// TestCompletePointNamesWithoutUsableModel: --point offers nothing when the
+// command has no --model flag or its value is not a model ID.
+func TestCompletePointNamesWithoutUsableModel(t *testing.T) {
+	noModel := &cobra.Command{Use: "x"}
+	if got, directive := completePointNames(noModel, nil, ""); got != nil || directive != cobra.ShellCompDirectiveNoFileComp {
+		t.Errorf("without --model: %v %v", got, directive)
+	}
+
+	badModel := &cobra.Command{Use: "x"}
+	badModel.Flags().String("model", "inverter", "model")
+	if got, directive := completePointNames(badModel, nil, ""); got != nil || directive != cobra.ShellCompDirectiveNoFileComp {
+		t.Errorf("--model inverter: %v %v", got, directive)
+	}
+}
