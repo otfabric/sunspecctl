@@ -21,6 +21,7 @@ import (
 
 	"github.com/otfabric/go-modbus"
 	"github.com/otfabric/go-sunspec"
+	"github.com/otfabric/sunspecctl/internal/buildinfo"
 	"github.com/spf13/cobra"
 )
 
@@ -39,8 +40,8 @@ var (
 	flagParity   string
 	flagStopBits uint
 
-	// Build metadata set at build time via -ldflags.
-	version   = "dev"
+	// Build metadata set at build time via -ldflags; see internal/buildinfo.
+	version   = ""
 	tag       = ""
 	commit    = ""
 	buildDate = ""
@@ -89,12 +90,10 @@ func newRootCmd() *cobra.Command {
 	root.PersistentFlags().StringVar(&flagTLSCert, "tls-cert", "", "Certificate (PEM) this side presents, for tcp+tls:// URLs")
 	root.PersistentFlags().StringVar(&flagTLSKey, "tls-key", "", "Private key (PEM) of --tls-cert")
 	root.PersistentFlags().StringVar(&flagTLSCA, "tls-ca", "", "CA certificates (PEM) the other side's certificate must chain to")
-	_ = root.RegisterFlagCompletionFunc("parity", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-		return []string{"none", "even", "odd"}, cobra.ShellCompDirectiveNoFileComp
-	})
 
 	root.AddCommand(detectCmd(), modelsCmd(), readCmd(), readModelCmd(), readPointCmd(), pollCmd(), pollModelCmd(), pollPointCmd(),
 		serveCmd(), captureCmd(), templateCmd(), completionCmd(root), versionCmd())
+	registerCompletions(root)
 
 	// Errors can quote what a device or a file holds: escape what a terminal
 	// would act on before cobra prints them.
@@ -112,28 +111,15 @@ func completionCmd(root *cobra.Command) *cobra.Command {
 	return &cobra.Command{
 		Use:   "completion [bash|zsh|fish|powershell]",
 		Short: "Generate shell completion script",
-		Long: `Generate a shell completion script for sunspecctl.
-
-To load completions:
-
-  # Bash (add to ~/.bashrc for persistence)
-  source <(sunspecctl completion bash)
-
-  # Zsh (add to ~/.zshrc for persistence)
-  source <(sunspecctl completion zsh)
-
-  # Fish
-  sunspecctl completion fish | source
-
-  # PowerShell
-  sunspecctl completion powershell | Out-String | Invoke-Expression`,
+		Long: `Generate a shell completion script for sunspecctl: bash, zsh, fish or
+PowerShell. Installation: see "Shell completion" in the README.`,
 		DisableFlagsInUseLine: true,
 		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 		Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			switch args[0] {
 			case "bash":
-				return root.GenBashCompletion(cmd.OutOrStdout())
+				return root.GenBashCompletionV2(cmd.OutOrStdout(), true)
 			case "zsh":
 				return root.GenZshCompletion(cmd.OutOrStdout())
 			case "fish":
@@ -220,36 +206,22 @@ func discoverOpts() *sunspec.DiscoverOptions {
 
 // --- version ---
 
-// versionCmd returns the command that prints the build metadata.
+// versionCmd returns the command that prints the build metadata: one line,
+// or one JSON object with --json or SUNSPECCTL_FORMAT=json.
 func versionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Print the sunspecctl version",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			out := newOutputWriter(cmd.OutOrStdout())
+			buildinfo.Set(version, tag, commit, buildDate)
+			info := buildinfo.Get("sunspecctl")
+			line := info.String()
 			if flagJSON {
-				info := map[string]string{"version": version}
-				if tag != "" {
-					info["tag"] = tag
-				}
-				if commit != "" {
-					info["commit"] = commit
-				}
-				if buildDate != "" {
-					info["buildDate"] = buildDate
-				}
-				return printJSON(out, info)
+				line = info.JSON()
 			}
-			_, _ = fmt.Fprintf(out, "sunspecctl %s\n", version)
-			if tag != "" {
-				_, _ = fmt.Fprintf(out, "tag:       %s\n", tag)
-			}
-			if commit != "" {
-				_, _ = fmt.Fprintf(out, "commit:    %s\n", commit)
-			}
-			if buildDate != "" {
-				_, _ = fmt.Fprintf(out, "built:     %s\n", buildDate)
-			}
+			out := newOutputWriter(cmd.OutOrStdout())
+			_, _ = fmt.Fprintln(out, line)
 			return out.result()
 		},
 	}

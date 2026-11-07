@@ -38,6 +38,8 @@ The existing commands, their flags and their output are unchanged.
 
 ### Shell completion
 
+Completion knows the commands and flags, the values of `--parity`, `--data-bits`, `--stop-bits` and `--baud`, the URL schemes of `--url`, the model IDs with a known schema for `--id` and `--model`, the point names of that model for `--point`, and JSON or PEM files for `--file` and `--tls-*`.
+
 ```bash
 # bash (needs the bash-completion package)
 mkdir -p ~/.local/share/bash-completion/completions
@@ -95,7 +97,7 @@ sunspecctl
 ├── capture      Read a device and write it as a device file for serve
 ├── template     Write a device file skeleton for the given models
 ├── completion   Generate shell completion script (bash/zsh/fish/powershell)
-└── version      Print the sunspecctl version
+└── version      Print the version, tag, commit and build date on one line (--json: one object)
 ```
 
 ## Global flags
