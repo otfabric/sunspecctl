@@ -32,7 +32,7 @@ COVERAGE_MIN  := 90
 # Per-package floor (TEST-012): what the weakest package measures now, rounded down.
 COVER_PKG_MIN := 90
 # docsync release of docs-check (DOC-008).
-DOCSYNC_VERSION := v0.2.0
+DOCSYNC_VERSION := v0.3.0
 
 all: check build ## Run all checks and build the CLI
 
