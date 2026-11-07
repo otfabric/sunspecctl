@@ -1,0 +1,9 @@
+{
+  "clis": [
+    {
+      "name": "sunspecctl",
+      "manifest": ".",
+      "exit_codes": "."
+    }
+  ]
+}
