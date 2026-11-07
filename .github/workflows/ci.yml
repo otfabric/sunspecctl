@@ -23,7 +23,7 @@ jobs:
       codecov-name: sunspecctl
       go-versions: '["1.26", "1.27"]'
       test-exclude-regex: "/example(s)?($|/)"
-      policy-version: v1.4.1
+      policy-version: v1.4.2
     secrets: inherit
 
   # The per-package coverage floor (TEST-012).
