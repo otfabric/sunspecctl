@@ -1,5 +1,21 @@
 # sunspecctl Releases
 
+## v0.6.0
+
+**Date:** 2026-11-07
+**Previous release:** v0.5.1
+
+### Added
+
+- Shell completion completes flag values: `--parity`, `--data-bits`, `--stop-bits`, `--baud`, the URL schemes of `--url`, the model IDs with a known schema for `--id` and `--model` (with their names), the point names of the chosen model for `--point`, JSON files for `serve --file`, PEM files for `--tls-ca`, `--tls-cert` and `--tls-key`; numbers and durations no longer complete file names. The bash script is cobra's V2 script, with descriptions.
+
+### Changed
+
+- **Breaking for scripts that read `version`:** `version` prints one line, `sunspecctl 0.6.0 (tag v0.6.0, commit <sha>, built <date>, go1.26.10, linux/amd64)`, instead of a `tag:`, `commit:` and `built:` block; the version has no leading `v`. `version --json` (and `--json version`, `SUNSPECCTL_FORMAT=json`) prints one line with the keys `name`, `version`, `tag`, `commit`, `built`, `go`, `platform`, always present and in this order; `buildDate` is now `built`. A development build reports `dev` and the commit from the Go VCS stamp (`-dirty` for a modified tree); `go install …@vX.Y.Z` reports that version.
+- `make build` stamps the full commit SHA, and a tag only when the commit is tagged.
+
+---
+
 ## v0.5.1
 
 **Date:** 2026-11-06

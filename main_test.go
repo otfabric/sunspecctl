@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -1177,7 +1178,7 @@ func TestHelp(t *testing.T) {
 		t.Errorf("read-model help:\n%s", r.stdout)
 	}
 	r = runCLI(t, "completion", "--help")
-	if !strings.Contains(r.stdout, "  source <(sunspecctl completion bash)\n") ||
+	if !strings.Contains(r.stdout, "PowerShell. Installation: see \"Shell completion\" in the README.\n") ||
 		!strings.Contains(r.stdout, "  sunspecctl completion [bash|zsh|fish|powershell]\n") {
 		t.Errorf("completion help:\n%s", r.stdout)
 	}
@@ -1185,7 +1186,7 @@ func TestHelp(t *testing.T) {
 
 func TestCompletion(t *testing.T) {
 	headers := map[string]string{
-		"bash":       "# bash completion for sunspecctl",
+		"bash":       "# bash completion V2 for sunspecctl",
 		"zsh":        "#compdef sunspecctl",
 		"fish":       "# fish completion for sunspecctl",
 		"powershell": "# powershell completion for sunspecctl",
@@ -1204,13 +1205,13 @@ func TestCompletion(t *testing.T) {
 			}
 		})
 	}
-	// The bash script knows the commands and flags of this tool.
-	bash := runCLI(t, "completion", "bash").stdout
-	for _, want := range []string{"poll-point", "read-model", "--unit-id", "--interval"} {
-		if !strings.Contains(bash, want) {
-			t.Errorf("bash completion does not mention %s", want)
-		}
+	// The bash script asks the binary (__complete), which knows the commands
+	// and flags of this tool.
+	if bash := runCLI(t, "completion", "bash").stdout; !strings.Contains(bash, "__complete") {
+		t.Error("bash completion does not call __complete")
 	}
+	wantCandidates(t, []string{""}, "poll-point", "read-model")
+	wantCandidates(t, []string{"poll", "--"}, "--unit-id", "--interval")
 }
 
 // setBuildInfo overrides the link-time build metadata for one test.
@@ -1222,41 +1223,29 @@ func setBuildInfo(t *testing.T, v, tg, c, d string) {
 }
 
 func TestVersion(t *testing.T) {
-	t.Run("defaults", func(t *testing.T) {
-		setBuildInfo(t, "dev", "", "", "")
-		wantOK(t, runCLI(t, "version"), "sunspecctl dev\n")
-		wantOK(t, runCLI(t, "version", "--json"), "{\n  \"version\": \"dev\"\n}\n")
-	})
+	tail := runtime.Version() + ", " + runtime.GOOS + "/" + runtime.GOARCH
+	jsonTail := `"go":"` + runtime.Version() + `","platform":"` + runtime.GOOS + "/" + runtime.GOARCH + `"}` + "\n"
 	t.Run("full build metadata", func(t *testing.T) {
-		setBuildInfo(t, "v1.2.3-4-gabc1234", "v1.2.3", "abc1234", "2026-01-02T03:04:05Z")
-		wantOK(t, runCLI(t, "version"), lines(
-			"sunspecctl v1.2.3-4-gabc1234",
-			"tag:       v1.2.3",
-			"commit:    abc1234",
-			"built:     2026-01-02T03:04:05Z",
-		))
-		var info map[string]string
-		decodeJSON(t, runCLI(t, "--json", "version"), &info)
-		want := map[string]string{
-			"version": "v1.2.3-4-gabc1234", "tag": "v1.2.3", "commit": "abc1234", "buildDate": "2026-01-02T03:04:05Z",
-		}
-		if len(info) != len(want) {
-			t.Errorf("version --json = %v, want %v", info, want)
-		}
-		for k, v := range want {
-			if info[k] != v {
-				t.Errorf("version --json: %s = %q, want %q", k, info[k], v)
-			}
-		}
+		setBuildInfo(t, "0.6.0", "v0.6.0", "1802d0f9afe8642d1e278120b76fcdfac967cb9e", "2026-01-02T03:04:05Z")
+		text := "sunspecctl 0.6.0 (tag v0.6.0, commit 1802d0f9afe8642d1e278120b76fcdfac967cb9e, built 2026-01-02T03:04:05Z, " + tail + ")\n"
+		wantOK(t, runCLI(t, "version"), text)
+		js := `{"name":"sunspecctl","version":"0.6.0","tag":"v0.6.0","commit":"1802d0f9afe8642d1e278120b76fcdfac967cb9e","built":"2026-01-02T03:04:05Z",` + jsonTail
+		wantOK(t, runCLI(t, "version", "--json"), js)
+		wantOK(t, runCLI(t, "--json", "version"), js)
+		t.Setenv("SUNSPECCTL_FORMAT", "json")
+		wantOK(t, runCLI(t, "version"), js)
+		t.Setenv("SUNSPECCTL_FORMAT", "text")
+		wantOK(t, runCLI(t, "version"), text)
 	})
-	t.Run("partial build metadata", func(t *testing.T) {
-		setBuildInfo(t, "v9", "", "deadbee", "")
-		wantOK(t, runCLI(t, "version"), "sunspecctl v9\ncommit:    deadbee\n")
-		wantOK(t, runCLI(t, "version", "--json"), "{\n  \"commit\": \"deadbee\",\n  \"version\": \"v9\"\n}\n")
+	t.Run("without tag", func(t *testing.T) {
+		setBuildInfo(t, "v0.6.0-4-gabc1234", "", "abc1234", "2026-01-02T03:04:05Z")
+		wantOK(t, runCLI(t, "version"), "sunspecctl 0.6.0-4-gabc1234 (commit abc1234, built 2026-01-02T03:04:05Z, "+tail+")\n")
+		wantOK(t, runCLI(t, "version", "--json"),
+			`{"name":"sunspecctl","version":"0.6.0-4-gabc1234","tag":"","commit":"abc1234","built":"2026-01-02T03:04:05Z",`+jsonTail)
 	})
 	t.Run("needs no device", func(t *testing.T) {
-		setBuildInfo(t, "dev", "", "", "")
-		wantOK(t, runCLI(t, "version", "--url", "tcp://127.0.0.1:1"), "sunspecctl dev\n")
+		setBuildInfo(t, "0.6.0", "", "abc", "x")
+		wantOK(t, runCLI(t, "version", "--url", "tcp://127.0.0.1:1"), "sunspecctl 0.6.0 (commit abc, built x, "+tail+")\n")
 	})
 }
 
@@ -1396,7 +1385,7 @@ func TestMainInProcess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(string(got), "sunspecctl "+version+"\n") {
+	if !strings.HasPrefix(string(got), "sunspecctl dev (commit ") || strings.Count(string(got), "\n") != 1 {
 		t.Errorf("main printed %q", got)
 	}
 }

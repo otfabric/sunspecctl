@@ -21,8 +21,8 @@ ARCHS       = linux/amd64 linux/arm64 linux/arm/v7 darwin/amd64 darwin/arm64 win
 RELEASE_DIR = release
 # Override on the command line or in CI (matches the ldflags of the release workflow).
 VERSION    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-TAG        ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "")
-COMMIT     ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "")
+TAG        ?= $(shell git describe --tags --exact-match 2>/dev/null || echo "")
+COMMIT     ?= $(shell git rev-parse HEAD 2>/dev/null || echo "")
 BUILD_DATE ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS     = -ldflags "-s -w -X main.version=$(VERSION) -X main.tag=$(TAG) -X main.commit=$(COMMIT) -X main.buildDate=$(BUILD_DATE)"
 
