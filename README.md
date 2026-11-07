@@ -36,6 +36,26 @@ From source (Go 1.26+): `go install github.com/otfabric/sunspecctl@latest`
 
 The existing commands, their flags and their output are unchanged.
 
+### Shell completion
+
+```bash
+# bash (needs the bash-completion package)
+mkdir -p ~/.local/share/bash-completion/completions
+sunspecctl completion bash > ~/.local/share/bash-completion/completions/sunspecctl
+
+# zsh: a directory on your fpath, then restart the shell
+mkdir -p ~/.zsh/completions && sunspecctl completion zsh > ~/.zsh/completions/_sunspecctl
+# and once in ~/.zshrc:  fpath=(~/.zsh/completions $fpath); autoload -U compinit && compinit
+
+# fish
+mkdir -p ~/.config/fish/completions && sunspecctl completion fish > ~/.config/fish/completions/sunspecctl.fish
+```
+
+```powershell
+# PowerShell: add this line to your profile ($PROFILE)
+sunspecctl completion powershell | Out-String | Invoke-Expression
+```
+
 ---
 
 ## Quick start
