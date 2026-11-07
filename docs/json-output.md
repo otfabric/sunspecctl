@@ -28,10 +28,10 @@ With `read` and `poll`, a model that cannot be read gives `warning: partial read
 One line, not indented, the keys always present and in this order:
 
 ```json
-{"name":"sunspecctl","version":"0.6.0","tag":"v0.6.0","commit":"1802d0f9afe8642d1e278120b76fcdfac967cb9e","built":"2026-11-07T10:00:00Z","go":"go1.26.10","platform":"linux/amd64"}
+{"name":"sunspecctl","version":"0.6.0","tag":"v0.6.0","commit":"1802d0f9afe8642d1e278120b76fcdfac967cb9e","built":"2026-11-07T10:00:00Z","libraries":[{"name":"go-modbus","version":"1.11.1"},{"name":"go-serial","version":"0.2.1"},{"name":"go-sunspec","version":"0.10.0"}],"go":"go1.26.10","platform":"linux/amd64"}
 ```
 
-`version` has no leading `v` and is `dev` for a development build; `tag` is `""` when the build has no tag; `commit` is the full SHA (with `-dirty` for a modified tree) or `unknown`; `built` is the RFC 3339 UTC build date or `unknown`; `platform` is `goos/goarch`.
+`version` has no leading `v` and is `dev` for a development build; `tag` is `""` when the build has no tag; `commit` is the full SHA (with `-dirty` for a modified tree) or `unknown`; `built` is the RFC 3339 UTC build date or `unknown`; `libraries` are the OT Fabric libraries the binary is built with (`[]` when none); `platform` is `goos/goarch`.
 
 ## Detection
 

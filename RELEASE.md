@@ -11,8 +11,8 @@
 
 ### Changed
 
-- **Breaking for scripts that read `version`:** `version` prints one line, `sunspecctl 0.6.0 (tag v0.6.0, commit <sha>, built <date>, go1.26.10, linux/amd64)`, instead of a `tag:`, `commit:` and `built:` block; the version has no leading `v`. `version --json` (and `--json version`, `SUNSPECCTL_FORMAT=json`) prints one line with the keys `name`, `version`, `tag`, `commit`, `built`, `go`, `platform`, always present and in this order; `buildDate` is now `built`. A development build reports `dev` and the commit from the Go VCS stamp (`-dirty` for a modified tree); `go install …@vX.Y.Z` reports that version.
-- `make build` stamps the full commit SHA, and a tag only when the commit is tagged.
+- **Breaking for scripts that read `version`:** `version` prints one line, `sunspecctl 0.6.0 (tag v0.6.0, commit <sha>, built <date>, go-modbus 1.11.1, go-serial 0.2.1, go-sunspec 0.10.0, go1.26.10, linux/amd64)`, with the OT Fabric libraries it is built with,, instead of a `tag:`, `commit:` and `built:` block; the version has no leading `v`. `version --json` (and `--json version`, `SUNSPECCTL_FORMAT=json`) prints one line with the keys `name`, `version`, `tag`, `commit`, `built`, `libraries`, `go`, `platform`, always present and in this order; `buildDate` is now `built`. A development build reports `dev` and the commit from the Go VCS stamp (`-dirty` for a modified tree); `go install …@vX.Y.Z` reports that version.
+- `make build` stamps a version and tag only when HEAD is a tag (a build off a tag reports `dev`), and the full commit SHA.
 
 ---
 

@@ -23,6 +23,7 @@ import (
 
 	"github.com/otfabric/go-sunspec/registry"
 	"github.com/otfabric/go-sunspec/testutil"
+	"github.com/otfabric/sunspecctl/internal/buildinfo"
 )
 
 // freePort returns a TCP port on 127.0.0.1 that was free a moment ago.
@@ -1223,8 +1224,8 @@ func setBuildInfo(t *testing.T, v, tg, c, d string) {
 }
 
 func TestVersion(t *testing.T) {
-	tail := runtime.Version() + ", " + runtime.GOOS + "/" + runtime.GOARCH
-	jsonTail := `"go":"` + runtime.Version() + `","platform":"` + runtime.GOOS + "/" + runtime.GOARCH + `"}` + "\n"
+	tail := libsText("sunspecctl") + runtime.Version() + ", " + runtime.GOOS + "/" + runtime.GOARCH
+	jsonTail := libsJSON("sunspecctl") + `"go":"` + runtime.Version() + `","platform":"` + runtime.GOOS + "/" + runtime.GOARCH + `"}` + "\n"
 	t.Run("full build metadata", func(t *testing.T) {
 		setBuildInfo(t, "0.6.0", "v0.6.0", "1802d0f9afe8642d1e278120b76fcdfac967cb9e", "2026-01-02T03:04:05Z")
 		text := "sunspecctl 0.6.0 (tag v0.6.0, commit 1802d0f9afe8642d1e278120b76fcdfac967cb9e, built 2026-01-02T03:04:05Z, " + tail + ")\n"
@@ -1388,4 +1389,19 @@ func TestMainInProcess(t *testing.T) {
 	if !strings.HasPrefix(string(got), "sunspecctl dev (commit ") || strings.Count(string(got), "\n") != 1 {
 		t.Errorf("main printed %q", got)
 	}
+}
+
+// libsText and libsJSON are how the OT Fabric libraries of this test binary
+// appear in the version output (internal/buildinfo tests the formatting).
+func libsText(name string) string {
+	var s string
+	for _, l := range buildinfo.Get(name).Libraries {
+		s += l.Name + " " + l.Version + ", "
+	}
+	return s
+}
+
+func libsJSON(name string) string {
+	out, _ := json.Marshal(buildinfo.Get(name).Libraries)
+	return `"libraries":` + string(out) + `,`
 }

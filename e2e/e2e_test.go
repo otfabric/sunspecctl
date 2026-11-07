@@ -43,9 +43,13 @@ func TestVersionPrintsTheBuiltVersion(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code %d, want 0\n%s", code, output)
 	}
-	want := os.Getenv("SUNSPECCTL_E2E_VERSION")
-	if want == "" {
+	// make e2e sets it to the tag of HEAD, empty off a tag: then the binary is a dev build.
+	want, ok := os.LookupEnv("SUNSPECCTL_E2E_VERSION")
+	if !ok {
 		t.Fatal("SUNSPECCTL_E2E_VERSION is not set; run make e2e")
+	}
+	if want == "" {
+		want = "dev"
 	}
 	want = strings.TrimPrefix(want, "v")
 	if !strings.HasPrefix(output, "sunspecctl "+want+" (") || strings.Count(output, "\n") != 1 {
@@ -56,7 +60,7 @@ func TestVersionPrintsTheBuiltVersion(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("version --json: exit code %d, want 0\n%s", code, output)
 	}
-	var info map[string]string
+	var info map[string]any
 	if err := json.Unmarshal([]byte(output), &info); err != nil || info["name"] != "sunspecctl" || info["version"] != want {
 		t.Fatalf("version --json is not the build information of sunspecctl %s (%v):\n%s", want, err, output)
 	}
