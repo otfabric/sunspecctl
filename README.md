@@ -379,7 +379,7 @@ sunspecctl serve --file device.json --check
 
 `capture` writes models that decode cleanly as point values, which are easy to read and edit. A model without a known schema, or one that does not match its schema exactly (shorter, longer, a value that would not read back the same), is written as `registers`. Either way, serving the file gives a device that reads the same as the original: the same points, values, scale factors and not-implemented points at the same addresses. With `--raw`, every model is written as `registers` and the copy is register-for-register identical. `capture` writes enum and bitfield points as numbers, so that values the model definition does not name survive.
 
-With `-o`, the file is written with mode 0600 to a temporary file next to it and then renamed into place, so an existing file is replaced whole or not at all. `-o` refuses a symbolic link and anything that is not a regular file (a directory, `/dev/null`); leave out `-o` to write to standard output. A device file `serve` reads may be at most 16 MiB.
+With `-o` (`--output`, a flag of `capture` and `template`), the file is written with mode 0600 to a temporary file next to it and then renamed into place, so an existing file is replaced whole or not at all. `-o` refuses a symbolic link and anything that is not a regular file (a directory, `/dev/null`); leave out `-o` to write to standard output. A device file `serve` reads may be at most 16 MiB.
 
 A capture is a snapshot: the served values do not change by themselves. It can contain serial numbers and network addresses of the device; look before you share it.
 
