@@ -10,7 +10,31 @@
 
 Use it to commission and troubleshoot a device, to check what it really exposes before writing integration code, to poll values into a script or a pipeline as JSON, or to develop and test an EMS, a logger or a SCADA integration against a simulated inverter, meter or battery. It is built on the [otfabric/go-sunspec](https://github.com/otfabric/go-sunspec) library, which is what to use from Go code.
 
-**Quick links:** [Quick start](#quick-start) · [Install](#install) · [Commands](#commands) · [Global flags](#global-flags) · [Polling](#polling) · [Serving / simulating a device](#serving--simulating-a-device) · [FAQ](#faq)
+**Quick links:** [Install](#install) · [Quick start](#quick-start) · [Commands](#commands) · [Global flags](#global-flags) · [Polling](#polling) · [Serving / simulating a device](#serving--simulating-a-device) · [FAQ](#faq)
+
+## Install
+
+```bash
+curl -fsSL https://get.otfabric.io/sunspecctl | sh
+```
+
+```powershell
+irm https://get.otfabric.io/sunspecctl.ps1 | iex
+```
+
+Linux (amd64, arm64, armv7), macOS (Intel, Apple silicon) and Windows (amd64, arm64). The installer verifies the release's SHA-256 checksum, installs per user without `sudo` (`~/.local/bin`, Windows `%LOCALAPPDATA%\OTFabric\bin`), and upgrades in place when run again. Pin a version with `OTF_VERSION=x.y.z`; for CI, containers and device images use `OTF_UNMANAGED_INSTALL=<dir>`; all options: [otfabric/install](https://github.com/otfabric/install#options). For offline machines, the archives and checksums are on [Releases](https://github.com/otfabric/sunspecctl/releases).
+
+From source (Go 1.26+): `go install github.com/otfabric/sunspecctl@latest`
+
+### Coming from go-sunspec
+
+`sunspecctl` used to be released from the [go-sunspec](https://github.com/otfabric/go-sunspec) repository, last as v0.4.2. Releases now come from this repository, and **the version numbering starts again at v0.1.0**: sunspecctl v0.1.0 is the successor of the sunspecctl that shipped with go-sunspec v0.4.2, although its number is lower. The two series are told apart by where they come from, not by comparing numbers:
+
+- The installer above replaces the old install commands; it always takes the latest release of this repository.
+- `go install github.com/otfabric/go-sunspec/cmd/sunspecctl@latest` stays at v0.4.2 for good. Use `go install github.com/otfabric/sunspecctl@latest`.
+- A script or package recipe that only upgrades to a higher version number will not move from 0.4.2 to 0.1.0 by itself: point it at the new repository once.
+
+The existing commands, their flags and their output are unchanged.
 
 ---
 
@@ -53,150 +77,6 @@ sunspecctl
 ├── completion   Generate shell completion script (bash/zsh/fish/powershell)
 └── version      Print the sunspecctl version
 ```
-
-## Install
-
-The easiest way to install `sunspecctl` is to download a pre-built binary from the [GitHub Releases page](https://github.com/otfabric/sunspecctl/releases). No Go toolchain is required.
-
-| Platform | CPU | Download |
-|---|---|---|
-| Linux | x86-64 | `sunspecctl-<version>-linux-amd64.tar.gz` |
-| Linux | 64-bit ARM (Raspberry Pi 4/5 with a 64-bit OS, AWS Graviton) | `sunspecctl-<version>-linux-arm64.tar.gz` |
-| Linux | 32-bit ARM (Raspberry Pi with a 32-bit OS) | `sunspecctl-<version>-linux-armv7.tar.gz` |
-| macOS | Apple Silicon (M1 and later) | `sunspecctl-<version>-darwin-arm64.tar.gz` |
-| macOS | Intel | `sunspecctl-<version>-darwin-amd64.tar.gz` |
-| Windows | x86-64 | `sunspecctl-<version>-windows-amd64.zip` |
-| Windows | ARM64 | `sunspecctl-<version>-windows-arm64.zip` |
-
-Each release also contains `sunspecctl-<version>-checksums.txt` (SHA-256) so you can verify your download. The commands below fetch the **latest** release, verify its checksum and install it. Afterwards, check that it works:
-
-```console
-sunspecctl version
-```
-
-### Linux
-
-```bash
-# 1. Find the latest version and your CPU architecture
-VERSION=$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/otfabric/sunspecctl/releases/latest | sed 's|.*/v||')
-case "$(uname -m)" in
-  x86_64)         ARCH=amd64 ;;
-  aarch64|arm64)  ARCH=arm64 ;;
-  armv7l)         ARCH=armv7 ;;
-  *) echo "Unsupported architecture: $(uname -m)" ;;
-esac
-
-# 2. Download the archive and the checksum file
-FILE="sunspecctl-${VERSION}-linux-${ARCH}.tar.gz"
-BASE="https://github.com/otfabric/sunspecctl/releases/download/v${VERSION}"
-curl -fsSLO "${BASE}/${FILE}"
-curl -fsSLO "${BASE}/sunspecctl-${VERSION}-checksums.txt"
-
-# 3. Verify the download (should print "OK")
-grep "${FILE}" "sunspecctl-${VERSION}-checksums.txt" | sha256sum -c -
-
-# 4. Extract and install (the binary in the archive carries the version and platform in its name)
-mkdir -p sunspecctl-dl && tar -xzf "${FILE}" -C sunspecctl-dl
-sudo install -m 0755 "$(find sunspecctl-dl -type f -name 'sunspecctl*' | head -n1)" /usr/local/bin/sunspecctl
-```
-
-No `sudo`? Install into your home directory instead (and make sure `~/.local/bin` is in your `PATH`):
-
-```bash
-mkdir -p ~/.local/bin
-install -m 0755 "$(find sunspecctl-dl -type f -name 'sunspecctl*' | head -n1)" ~/.local/bin/sunspecctl
-```
-
-To talk to a device on a serial port (RS-485 adapter) without `sudo`, your user needs access to the port, usually through the `dialout` group: `sudo usermod -aG dialout "$USER"`, then log out and back in.
-
-### macOS
-
-```bash
-# 1. Find the latest version and your CPU architecture (arm64 = Apple Silicon, x86_64 = Intel)
-VERSION=$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/otfabric/sunspecctl/releases/latest | sed 's|.*/v||')
-case "$(uname -m)" in
-  arm64)   ARCH=arm64 ;;
-  x86_64)  ARCH=amd64 ;;
-esac
-
-# 2. Download the archive and the checksum file
-FILE="sunspecctl-${VERSION}-darwin-${ARCH}.tar.gz"
-BASE="https://github.com/otfabric/sunspecctl/releases/download/v${VERSION}"
-curl -fsSLO "${BASE}/${FILE}"
-curl -fsSLO "${BASE}/sunspecctl-${VERSION}-checksums.txt"
-
-# 3. Verify the download (should print "OK")
-grep "${FILE}" "sunspecctl-${VERSION}-checksums.txt" | shasum -a 256 -c -
-
-# 4. Extract and install (the binary in the archive carries the version and platform in its name)
-mkdir -p sunspecctl-dl && tar -xzf "${FILE}" -C sunspecctl-dl
-sudo install -m 0755 "$(find sunspecctl-dl -type f -name 'sunspecctl*' | head -n1)" /usr/local/bin/sunspecctl
-```
-
-If you downloaded the archive with a web browser instead of `curl` and macOS refuses to run the binary ("cannot be verified"), remove the quarantine flag: `xattr -d com.apple.quarantine /usr/local/bin/sunspecctl`.
-
-### Windows (PowerShell)
-
-```powershell
-# 1. Find the latest version and your CPU architecture
-$version = (Invoke-RestMethod https://api.github.com/repos/otfabric/sunspecctl/releases/latest).tag_name.TrimStart('v')
-$arch    = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
-
-# 2. Download the archive and the checksum file
-$file = "sunspecctl-$version-windows-$arch.zip"
-$base = "https://github.com/otfabric/sunspecctl/releases/download/v$version"
-Invoke-WebRequest "$base/$file" -OutFile "$env:TEMP\$file"
-Invoke-WebRequest "$base/sunspecctl-$version-checksums.txt" -OutFile "$env:TEMP\sunspecctl-checksums.txt"
-
-# 3. Verify the download (throws an error on mismatch)
-$expected = ((Select-String -Path "$env:TEMP\sunspecctl-checksums.txt" -Pattern $file).Line -split '\s+')[0]
-$actual   = (Get-FileHash "$env:TEMP\$file" -Algorithm SHA256).Hash
-if ($expected -ne $actual) { throw "Checksum mismatch for $file" }
-
-# 4. Extract to a per-user folder and name the program sunspecctl.exe
-#    (the .exe in the archive carries the version and platform in its name)
-$dir = "$env:LOCALAPPDATA\Programs\sunspecctl"
-New-Item -ItemType Directory -Force -Path $dir | Out-Null
-Expand-Archive "$env:TEMP\$file" -DestinationPath "$env:TEMP\sunspecctl-dl" -Force
-$exe = Get-ChildItem "$env:TEMP\sunspecctl-dl" -Recurse -Filter 'sunspecctl*.exe' | Select-Object -First 1
-Copy-Item $exe.FullName "$dir\sunspecctl.exe" -Force
-
-# 5. Add sunspecctl to your user PATH (then open a new terminal)
-$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-if ($userPath -notlike "*$dir*") {
-  [Environment]::SetEnvironmentVariable('Path', "$userPath;$dir", 'User')
-}
-```
-
-If Windows SmartScreen warns about an unrecognised app, choose **More info → Run anyway**.
-
-### Manual download
-
-1. Open the [latest release](https://github.com/otfabric/sunspecctl/releases/latest).
-2. Download the archive for your platform from the table above.
-3. Extract it, rename the binary to `sunspecctl` (`sunspecctl.exe` on Windows) and move it to a folder on your `PATH`.
-
-### Update
-
-Run the same commands again. They always fetch the latest release and overwrite the previous binary.
-
-### With Go
-
-If you have Go 1.26 or later, you can build and install the latest release straight from source:
-
-```bash
-go install github.com/otfabric/sunspecctl@latest
-```
-
-### Coming from go-sunspec
-
-`sunspecctl` used to be released from the [go-sunspec](https://github.com/otfabric/go-sunspec) repository, last as v0.4.2. Releases now come from this repository, and **the version numbering starts again at v0.1.0**: sunspecctl v0.1.0 is the successor of the sunspecctl that shipped with go-sunspec v0.4.2, although its number is lower. The two series are told apart by where they come from, not by comparing numbers:
-
-- The install commands above replace the old ones; they always take the latest release of this repository.
-- `go install github.com/otfabric/go-sunspec/cmd/sunspecctl@latest` stays at v0.4.2 for good. Use `go install github.com/otfabric/sunspecctl@latest`.
-- A script or package recipe that only upgrades to a higher version number will not move from 0.4.2 to 0.1.0 by itself: point it at the new repository once.
-
-The existing commands, their flags and their output are unchanged.
 
 ## Global flags
 
@@ -479,7 +359,7 @@ Tests need no hardware: they run against the SunSpec fixture server of go-sunspe
 
 ## Requirements
 
-- Go 1.26+ to build from source (not needed for the pre-built binaries)
+- Go 1.26+ to build from source (not needed with the installer)
 - [otfabric/go-sunspec](https://github.com/otfabric/go-sunspec) v0.10.0+ and [otfabric/go-modbus](https://github.com/otfabric/go-modbus) v1.11.1+
 
 ## Contributing

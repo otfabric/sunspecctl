@@ -57,4 +57,4 @@ As a client `sunspecctl` reads and decodes; no command writes SunSpec control po
 
 ### Verifying Downloads
 
-`sunspecctl` release archives are published with a SHA-256 checksum file. Verify the checksum before installing.
+`sunspecctl` release archives are published with a SHA-256 checksum file. The installer in the [Install section](README.md#install) verifies the checksum before it installs anything.
