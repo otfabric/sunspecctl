@@ -1,5 +1,17 @@
 # sunspecctl Releases
 
+## v0.6.1
+
+**Date:** 2026-11-08
+**Previous release:** v0.6.0
+
+### Changed
+
+- Built on go-modbus v1.13.1 (was v1.11.1). v1.12.0 to v1.13.1 change only go-modbus's bundled `modbus-cli` (organisation exit codes, the one-line `version` and `version --json`, shell completion); the library code sunspecctl uses is the same, so sunspecctl behaves as before. `version` lists `go-modbus 1.13.1`.
+- Release binaries are built with the latest Go 1.26 patch release (otfabric/.github release workflow v3.6.0); they were built with the exact Go version in `go.mod` (1.26.0).
+
+---
+
 ## v0.6.0
 
 **Date:** 2026-11-07
