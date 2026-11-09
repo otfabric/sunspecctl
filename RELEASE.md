@@ -1,5 +1,32 @@
 # sunspecctl Releases
 
+## v0.7.0
+
+**Date:** 2026-11-09
+**Previous release:** v0.6.1
+
+### Summary
+
+Two flags on every command that connects to a device set how the connection is opened: `--proxy` reaches a plant network through a SOCKS5 proxy such as an SSH jump host, and `--source-addr` picks the local interface. Built on go-modbus v1.14.2, whose `Config.Dialer` opens the connections of every network transport.
+
+### Added
+
+- `--proxy socks5://host:port` (`SUNSPECCTL_PROXY`): connect through a SOCKS5 proxy (RFC 1928 CONNECT, no authentication); `socks5h://` sends host names to the proxy. For `tcp://`, `tcp+tls://` (the TLS handshake runs through the proxy and is verified against the host of `--url`), `rtuovertcp://` and `asciiovertcp://`. With `udp://` or `rtuoverudp://` it is a usage error (exit 2): SOCKS5 UDP ASSOCIATE is not implemented. Proxy credentials, other schemes, a missing port or a path are usage errors. A refusal by the proxy is a connection failure (exit 4) naming the proxy and its reply.
+- `--source-addr <ip>` (`SUNSPECCTL_SOURCE_ADDR`): connect from that local IP address, over TCP and UDP; with `--proxy`, the connection to the proxy.
+- Both on `detect`, `models`, `read`, `read-model`, `read-point`, `poll`, `poll-model`, `poll-point` and `capture`. Either flag with `rtu://` or `ascii://`, or on `serve`, is a usage error; `serve` ignores the environment variables.
+
+### Changed
+
+- Built on go-modbus v1.14.2 (was v1.13.1): `Config.Dialer`; a failed connect no longer repeats `dial tcp <addr>:` in its message (exit codes unchanged). `version` lists `go-modbus 1.14.2`.
+- `make build` marks the commit `-dirty` when the working tree has changes, as `go build` does; release builds are unchanged.
+
+### Tests
+
+- `internal/netdial`: flag validation, source address binding over TCP and UDP, SOCKS5 CONNECT for IPv4, IPv6 and host names (`socks5` and `socks5h`), every reply and handshake failure, a silent proxy against the deadline, cancel. `internal/socks5test` is the scripted test proxy. Both are at 100 % coverage.
+- Every client command through the test proxy to a fake SunSpec device, `socks5h` name forwarding, `tcp+tls` through the proxy (and a URL host the certificate does not hold failing the handshake), a refusing and a silent proxy, `--source-addr` on TCP, UDP and RTU over UDP, the environment variables, and every invalid value and transport mismatch as a usage error on every client command, with nothing sent.
+
+---
+
 ## v0.6.1
 
 **Date:** 2026-11-08

@@ -1145,11 +1145,13 @@ func TestHelp(t *testing.T) {
 		"  template    Write a device file skeleton for the given models\n",
 		"  completion  Generate shell completion script\n",
 		"  version     Print the sunspecctl version\n",
-		"      --json               Output as JSON\n",
-		"      --raw                Include raw register hex in output\n",
-		"      --timeout duration   Operation timeout (default 10s)\n",
-		"      --unit-id uint8      Modbus unit ID (default 1)\n",
-		"      --url string         Modbus device URL (default \"tcp://localhost:502\")\n",
+		"      --json                 Output as JSON\n",
+		"      --raw                  Include raw register hex in output\n",
+		"      --timeout duration     Operation timeout (default 10s)\n",
+		"      --unit-id uint8        Modbus unit ID (default 1)\n",
+		"      --url string           Modbus device URL (default \"tcp://localhost:502\")\n",
+		"      --proxy string         Connect through a SOCKS5 proxy: socks5://host:port (socks5h:// resolves names at the proxy); TCP URLs only\n",
+		"      --source-addr string   Local IP address to connect from (multi-homed hosts); network URLs only\n",
 	} {
 		if !strings.Contains(r.stdout, want) {
 			t.Errorf("root help lacks %q:\n%s", want, r.stdout)

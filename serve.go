@@ -178,6 +178,13 @@ SunSpec defines as writable. Accepted writes are printed. The device runs
 until it is interrupted (Ctrl-C) or terminated.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// serve listens: there is no connection to proxy or bind. The
+			// environment variables are ignored here, the flags refused.
+			for _, f := range []string{"proxy", "source-addr"} {
+				if cmd.Flags().Changed(f) {
+					return withExit(exitUsage, fmt.Errorf("--%s does not apply to serve, which listens on --url", f))
+				}
+			}
 			df, err := loadDeviceFile(file)
 			if err != nil {
 				return withExit(exitInvalidInput, fmt.Errorf("device file: %w", err))
