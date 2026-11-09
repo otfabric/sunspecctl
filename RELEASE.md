@@ -7,7 +7,7 @@
 
 ### Summary
 
-Two flags on every command that connects to a device set how the connection is opened: `--proxy` reaches a plant network through a SOCKS5 proxy such as an SSH jump host, and `--source-addr` picks the local interface. Built on go-modbus v1.14.1, whose `Config.Dialer` opens the connections of every network transport.
+Two flags on every command that connects to a device set how the connection is opened: `--proxy` reaches a plant network through a SOCKS5 proxy such as an SSH jump host, and `--source-addr` picks the local interface. Built on go-modbus v1.14.2, whose `Config.Dialer` opens the connections of every network transport.
 
 ### Added
 
@@ -17,7 +17,7 @@ Two flags on every command that connects to a device set how the connection is o
 
 ### Changed
 
-- Built on go-modbus v1.14.1 (was v1.13.1): `Config.Dialer`. `version` lists `go-modbus 1.14.1`.
+- Built on go-modbus v1.14.2 (was v1.13.1): `Config.Dialer`; a failed connect no longer repeats `dial tcp <addr>:` in its message (exit codes unchanged). `version` lists `go-modbus 1.14.2`.
 - `make build` marks the commit `-dirty` when the working tree has changes, as `go build` does; release builds are unchanged.
 
 ### Tests

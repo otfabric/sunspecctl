@@ -402,7 +402,7 @@ Tests need no hardware: they run against the SunSpec fixture server of go-sunspe
 ## Requirements
 
 - Go 1.26+ to build from source (not needed with the installer)
-- [otfabric/go-sunspec](https://github.com/otfabric/go-sunspec) v0.10.0+ and [otfabric/go-modbus](https://github.com/otfabric/go-modbus) v1.14.1+
+- [otfabric/go-sunspec](https://github.com/otfabric/go-sunspec) v0.10.0+ and [otfabric/go-modbus](https://github.com/otfabric/go-modbus) v1.14.2+
 
 ## Contributing
 
