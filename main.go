@@ -73,6 +73,7 @@ func newRootCmd() *cobra.Command {
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			commandEntered = true
+			applyDialEnv(cmd.Flags())
 			return applyFormatEnv(cmd.Flags().Changed("json"))
 		},
 	}
@@ -90,6 +91,8 @@ func newRootCmd() *cobra.Command {
 	root.PersistentFlags().StringVar(&flagTLSCert, "tls-cert", "", "Certificate (PEM) this side presents, for tcp+tls:// URLs")
 	root.PersistentFlags().StringVar(&flagTLSKey, "tls-key", "", "Private key (PEM) of --tls-cert")
 	root.PersistentFlags().StringVar(&flagTLSCA, "tls-ca", "", "CA certificates (PEM) the other side's certificate must chain to")
+	root.PersistentFlags().StringVar(&flagProxy, "proxy", "", "Connect through a SOCKS5 proxy: socks5://host:port (socks5h:// resolves names at the proxy); TCP URLs only")
+	root.PersistentFlags().StringVar(&flagSourceAddr, "source-addr", "", "Local IP address to connect from (multi-homed hosts); network URLs only")
 
 	root.AddCommand(detectCmd(), modelsCmd(), readCmd(), readModelCmd(), readPointCmd(), pollCmd(), pollModelCmd(), pollPointCmd(),
 		serveCmd(), captureCmd(), templateCmd(), completionCmd(root), versionCmd())
@@ -137,8 +140,8 @@ PowerShell. Installation: see "Shell completion" in the README.`,
 // The client may send read requests (FC03, FC04) only.
 // The serial-line settings only take effect for rtu:// and ascii:// URLs;
 // go-modbus fills in the defaults for the ones left at zero.
-func clientConfig() (modbus.Config, error) {
-	conf := modbus.Config{
+func clientConfig() (conf modbus.Config, err error) {
+	conf = modbus.Config{
 		URL:         flagURL,
 		Timeout:     flagTimeout,
 		DialTimeout: 5 * time.Second,
@@ -173,6 +176,9 @@ func clientConfig() (modbus.Config, error) {
 		// go-sunspec reads unit 1 for unit ID 0: refuse rather than read
 		// another unit than the one asked for.
 		return conf, withExit(exitUsage, errors.New("invalid --unit-id 0: that is the Modbus broadcast address, which a device does not answer; use 1-255"))
+	}
+	if conf.Dialer, err = dialer(flagURL); err != nil {
+		return conf, err
 	}
 	cert, pool, err := loadTLS(flagURL)
 	if err != nil {

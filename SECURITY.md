@@ -31,6 +31,7 @@ SunSpec devices are read, and with `sunspecctl serve` simulated, over Modbus, wh
 - **Use `sunspecctl` only on devices and networks you own or are authorized to access**
 - **Keep Modbus traffic on isolated, trusted networks**; never expose port 502 of an inverter, meter or battery to the Internet
 - Across untrusted networks, use Modbus over TLS (`tcp+tls://`, supported by go-modbus) where the device supports it, or a VPN or secured gateway
+- **Proxies**: `--proxy` (or `SUNSPECCTL_PROXY`) sends the connection through the SOCKS5 proxy you name, and with it the Modbus traffic in clear text unless the URL is `tcp+tls://`. The proxy is not authenticated (SOCKS5 without credentials): use only a proxy you control, such as an SSH jump host (`ssh -D`) listening on loopback. Over `tcp+tls://` the device certificate is verified against the host of `--url`, so a proxy cannot pose as the device. A `SUNSPECCTL_PROXY` left set in the environment applies to every client command; `version` does not show it
 
 ### Data Read From Devices Is Untrusted Input
 

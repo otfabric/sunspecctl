@@ -116,12 +116,32 @@ sunspecctl
 | `--tls-cert` | | Certificate (PEM) this side presents, for `tcp+tls://` URLs |
 | `--tls-key` | | Private key (PEM) of `--tls-cert` |
 | `--tls-ca` | | CA certificates (PEM) that the other side's certificate must chain to |
+| `--proxy` | | Connect through a SOCKS5 proxy, `socks5://host:port` or `socks5h://host:port`, for TCP URLs; see [Reaching the device: proxy and source address](#reaching-the-device-proxy-and-source-address) |
+| `--source-addr` | | Local IP address to connect from, for network URLs |
 
 For `serve`, `--url` is the address to listen on and `--unit-id` overrides the unit ID of the device file; see [Serving / simulating a device](#serving--simulating-a-device).
 
 `--url` selects the transport: `tcp://host:port`, `rtu://<device>` (for example `rtu:///dev/ttyUSB0` or `rtu://COM3`), `ascii://<device>`, `udp://host:port`, `rtuovertcp://host:port` for a serial-to-Ethernet gateway, and the other [go-modbus URL schemes](https://github.com/otfabric/go-modbus#transport-modes). The serial flags are ignored for network URLs.
 
 Many SunSpec devices on RS-485 use 9600 baud, 8 data bits, no parity and 1 stop bit, which is not the default: pass `--baud 9600 --stop-bits 1` (and the device's Modbus address as `--unit-id`).
+
+## Reaching the device: proxy and source address
+
+Every command that connects to a device (`detect`, `models`, `read`, `read-model`, `read-point`, `poll`, `poll-model`, `poll-point` and `capture`) accepts two flags for how the network connection is opened:
+
+- `--proxy socks5://host:port` connects through a SOCKS5 proxy (RFC 1928 CONNECT, no authentication), for example an SSH jump host into the plant network (`ssh -D 1080 jumphost`). `socks5h://` sends the host name of `--url` to the proxy to resolve; `socks5://` resolves it locally. Proxy credentials are not supported. It applies to `tcp://`, `tcp+tls://`, `rtuovertcp://` and `asciiovertcp://`; with `udp://` or `rtuoverudp://` it is a usage error, as SOCKS5 UDP ASSOCIATE is not implemented. Over `tcp+tls://` the TLS handshake runs through the proxy and the device certificate is still verified against the host of `--url`.
+- `--source-addr <ip>` connects from that local address, on a host with several networks (an OT and an office interface, say). It applies to the TCP and the UDP URLs; with `--proxy`, it is the source of the connection to the proxy.
+
+`SUNSPECCTL_PROXY` and `SUNSPECCTL_SOURCE_ADDR` set them when the flag is not given. Neither applies to `rtu://` or `ascii://` (a usage error), nor to `serve`, which listens (the flags are a usage error there, the environment variables are ignored).
+
+```bash
+ssh -N -D 1080 engineer@jumphost &
+sunspecctl detect --url tcp://10.20.0.15:502 --proxy socks5://127.0.0.1:1080
+sunspecctl read --url tcp://inverter-3.plant.local:502 --proxy socks5h://127.0.0.1:1080
+sunspecctl models --url tcp://192.168.10.20:502 --source-addr 192.168.10.2
+```
+
+An invalid value is a usage error (exit 2), before anything is sent. A proxy that refuses the connection is a connection failure (exit 4); the error names the proxy and its reply, for example `socks5: connection not allowed by ruleset`.
 
 ## Commands
 
@@ -382,7 +402,7 @@ Tests need no hardware: they run against the SunSpec fixture server of go-sunspe
 ## Requirements
 
 - Go 1.26+ to build from source (not needed with the installer)
-- [otfabric/go-sunspec](https://github.com/otfabric/go-sunspec) v0.10.0+ and [otfabric/go-modbus](https://github.com/otfabric/go-modbus) v1.13.1+
+- [otfabric/go-sunspec](https://github.com/otfabric/go-sunspec) v0.10.0+ and [otfabric/go-modbus](https://github.com/otfabric/go-modbus) v1.14.1+
 
 ## Contributing
 
