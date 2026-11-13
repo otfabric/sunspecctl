@@ -1,5 +1,19 @@
 # sunspecctl Releases
 
+## v0.7.2
+
+**Date:** 2026-11-13
+**Previous release:** v0.7.1
+
+### Changed
+
+- Built on go-modbus v1.15.1 and go-sunspec v0.10.2 (was go-modbus v1.14.5 and go-sunspec v0.10.1). go-sunspec is a dependency bump only.
+- `rtu://` and `ascii://`: after a timeout or an answer that does not match its request, the client discards the line until it is quiet, so the next request does not receive a late answer to an earlier one.
+- `rtuovertcp://`, `asciiovertcp://` and `rtuoverudp://`: the client closes and redials the connection after a request error or a mismatched answer. Expect more reconnects behind gateways where units often time out.
+- `serve` on `tcp+tls://`: when all 10 client slots are taken, a new connection replaces the oldest connection still in its TLS handshake instead of being refused; connections that completed the handshake are kept. A client must complete the TLS handshake within 10 s (was 30 s).
+
+---
+
 ## v0.7.1
 
 **Date:** 2026-11-13
