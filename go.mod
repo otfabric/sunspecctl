@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/otfabric/go-modbus v1.15.1
-	github.com/otfabric/go-sunspec v0.10.2
+	github.com/otfabric/go-sunspec v0.10.3
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 )
