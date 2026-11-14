@@ -1,5 +1,21 @@
 # sunspecctl Releases
 
+## v0.7.6
+
+**Date:** 2026-11-14
+**Previous release:** v0.7.5
+
+No command or flag is added or changed.
+
+### Changed
+
+- Built on go-sunspec v0.11.0 (was v0.10.5) and go-modbus v1.16.0 (was v1.15.3) (go-sunspec RELEASE.md, v0.11.0; go-modbus RELEASE.md, v1.16.0). For the tool this means:
+  - `serve`: a client write is logged without the simulated device being locked, so reads of other clients are answered meanwhile. A write that another write to the same model overtook while it was being logged is answered with exception 4 (server device failure) and changes nothing; the client may send it again.
+  - `serve`: a device file with a nested group its model's schema does not have at that place, or with more than 65535 group instances in one model, is refused when it is loaded, with an error that names the place. The encoder refused such a file before, after converting all of it.
+  - `serve`: code the Modbus server calls that does not return normally is logged with its stack and handled as an error of that request.
+
+---
+
 ## v0.7.5
 
 **Date:** 2026-11-14
