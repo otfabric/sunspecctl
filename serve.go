@@ -274,9 +274,11 @@ handshake) on standard error. The device runs until it is interrupted
 				return w.result()
 			}
 
+			// loadTLS sets the exit code, as for the client commands: 2 for
+			// a missing flag, 3 for a file that cannot be used.
 			cert, clientCAs, err := loadTLS(flagURL)
 			if err != nil {
-				return withExit(exitInvalidInput, fmt.Errorf("serve: %w", err))
+				return fmt.Errorf("serve: %w", err)
 			}
 			server, err := modbus.NewServer(&modbus.ServerConfig{
 				URL:           flagURL,

@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -921,6 +923,149 @@ func TestPartialReadIsAWarning(t *testing.T) {
 	wantNoCommandOutput(t, r)
 }
 
+// afterDiscovery is what stopsAfterDiscovery does with a read of model data
+// it no longer answers.
+type afterDiscovery int
+
+const (
+	silentAfterDiscovery afterDiscovery = iota // reads on without answering
+	dropAfterDiscovery                         // closes the connection
+	refuseAfterDiscovery                       // answers exception 2, illegal data address
+)
+
+// stopsAfterDiscovery serves h for discovery (the marker and the model
+// headers, read two registers at a time) and for the first `answered` reads
+// of model data, counted over all connections. Every later read of model
+// data is handled as then says. It returns the URL.
+func stopsAfterDiscovery(t *testing.T, h *testutil.SunSpecHandler, answered int32, then afterDiscovery) string {
+	t.Helper()
+	var dataReads atomic.Int32
+	return fakeDevice(t, func(c net.Conn) {
+		req := make([]byte, 12) // MBAP header and a read request
+		for {
+			if _, err := io.ReadFull(c, req); err != nil {
+				return
+			}
+			addr, quantity := binary.BigEndian.Uint16(req[8:]), binary.BigEndian.Uint16(req[10:])
+			var regs []uint16
+			err := modbus.ErrIllegalDataAddress
+			if quantity > 2 && dataReads.Add(1) > answered {
+				switch then {
+				case silentAfterDiscovery:
+					_, _ = io.Copy(io.Discard, c)
+					return
+				case dropAfterDiscovery:
+					_ = c.Close()
+					return
+				case refuseAfterDiscovery:
+				}
+			} else {
+				regs, err = h.HandleHoldingRegisters(context.Background(),
+					&modbus.HoldingRegistersRequest{UnitID: req[6], Addr: addr, Quantity: quantity})
+			}
+			pdu := []byte{req[7] | 0x80, 2} // exception 2, illegal data address
+			if err == nil {
+				pdu = []byte{req[7], byte(2 * len(regs))}
+				for _, v := range regs {
+					pdu = binary.BigEndian.AppendUint16(pdu, v)
+				}
+			}
+			resp := append([]byte{}, req[:4]...) // transaction and protocol ID
+			resp = binary.BigEndian.AppendUint16(resp, uint16(1+len(pdu)))
+			resp = append(append(resp, req[6]), pdu...)
+			if _, err := c.Write(resp); err != nil {
+				return
+			}
+		}
+	})
+}
+
+// When discovery succeeds and then no model can be read, read and poll end
+// with the exit code of the first error: 5 when --timeout passed, 4 when the
+// connection was lost, 6 for a Modbus exception. They print no models, and
+// poll stops. When at least one model was read, the errors of the others are
+// a warning and the command succeeds, as in TestPartialReadIsAWarning.
+func TestNothingReadAfterDiscovery(t *testing.T) {
+	const timeout = "500ms"
+	for _, tc := range []struct {
+		name string
+		then afterDiscovery
+		code int
+	}{
+		{"timeout", silentAfterDiscovery, exitTimeout},
+		{"connection lost", dropAfterDiscovery, exitTransport},
+		{"exception", refuseAfterDiscovery, exitProtocol},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			url := stopsAfterDiscovery(t, inverter(t), 0, tc.then)
+			for _, args := range [][]string{
+				{"read"}, {"read", "--json"},
+				{"poll", "--count", "3", "--interval", "1ms"}, {"poll", "--json", "--count", "3", "--interval", "1ms"},
+			} {
+				r := runCLI(t, append(args, "--url", url, "--timeout", timeout)...)
+				if r.err == nil {
+					t.Errorf("%v: exit 0, want %d\nstdout:\n%s\nstderr:\n%s", args, tc.code, r.stdout, r.stderr)
+					continue
+				}
+				if code := exitCode(r.err); code != tc.code || !strings.HasPrefix(r.err.Error(), "read: ") {
+					t.Errorf("%v: exit %d (%v), want %d and an error starting with \"read: \"", args, code, r.err, tc.code)
+				}
+				if !strings.HasPrefix(r.stderr, "Error: read: ") {
+					t.Errorf("%v: stderr:\n%s", args, r.stderr)
+				}
+				wantNoCommandOutput(t, r)
+			}
+		})
+
+		t.Run(tc.name+" after the first model", func(t *testing.T) {
+			url := stopsAfterDiscovery(t, inverter(t), 1, tc.then)
+
+			// read: the model that was read and the others with their
+			// error, a warning, exit 0.
+			r := runCLI(t, "read", "--url", url, "--timeout", timeout)
+			if r.err != nil {
+				t.Fatalf("read: %v\nstderr: %s", r.err, r.stderr)
+			}
+			if !strings.HasPrefix(r.stderr, "warning: partial read: ") || strings.Count(r.stderr, "\n") != 1 {
+				t.Errorf("read: stderr = %q, want one warning", r.stderr)
+			}
+			if !strings.HasPrefix(r.stdout, commonTable+"\n=== Model 101: ") || strings.Count(r.stdout, "WARNING: read error: ") != 3 {
+				t.Errorf("read: stdout:\n%s", r.stdout)
+			}
+
+			// poll: the first round is the partial read; in the second
+			// nothing can be read any more, and poll stops there.
+			url = stopsAfterDiscovery(t, inverter(t), 1, tc.then)
+			r = runCLI(t, "poll", "--json", "--count", "3", "--interval", "1ms", "--url", url, "--timeout", timeout)
+			if code := exitCode(r.err); code != tc.code {
+				t.Errorf("poll: exit %d (%v), want %d", code, r.err, tc.code)
+			}
+			var models []*sunspec.DecodedModel
+			if err := json.NewDecoder(strings.NewReader(r.stdout)).Decode(&models); err != nil {
+				t.Fatalf("poll: first document: %v\nstdout:\n%s", err, r.stdout)
+			}
+			if n := jsonDocuments(t, strings.TrimSuffix(r.stdout, usageOf(r.stdout))); n != 1 {
+				t.Errorf("poll: %d documents, want the first round only", n)
+			}
+			if len(models) != 4 || models[0].Group == nil || models[1].Group != nil || len(models[3].Warnings) != 1 {
+				t.Errorf("poll: first round:\n%s", r.stdout)
+			}
+			if !strings.HasPrefix(r.stderr, "warning: partial read: ") || !strings.Contains(r.stderr, "\nError: read: ") {
+				t.Errorf("poll: stderr:\n%s", r.stderr)
+			}
+		})
+	}
+}
+
+// usageOf returns the usage text cobra appended to the output of a failed
+// in-process run (see wantNoCommandOutput), or "".
+func usageOf(stdout string) string {
+	if i := strings.Index(stdout, "Usage:\n  sunspecctl "); i >= 0 {
+		return stdout[i:]
+	}
+	return ""
+}
+
 func TestUnknownModelAndPoint(t *testing.T) {
 	url := startDevice(t, inverter(t))
 
@@ -1364,6 +1509,13 @@ func TestMainExitCodes(t *testing.T) {
 	if code != 0 || !strings.HasPrefix(stderr, "warning: partial read: ") || strings.Contains(stdout, "warning:") ||
 		!strings.HasPrefix(stdout, "=== Model 1: Common ===\n") {
 		t.Errorf("partial read: exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
+	}
+
+	// When no model can be read after discovery, read exits with the code of
+	// the error and prints nothing on stdout.
+	stdout, stderr, code = runMain(t, "read", "--timeout", "500ms", "--url", stopsAfterDiscovery(t, inverter(t), 0, silentAfterDiscovery))
+	if code != exitTimeout || stdout != "" || !strings.HasPrefix(stderr, "Error: read: ") {
+		t.Errorf("nothing read: exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
 	}
 }
 

@@ -168,9 +168,11 @@ sunspecctl models --url rtu:///dev/ttyUSB0 --baud 9600 --stop-bits 1 --unit-id 3
 sunspecctl read --url rtuovertcp://192.168.1.50:4001 --unit-id 3
 ```
 
+`read` prints every model the device reported. A model that cannot be read is shown with its error as a warning, `warning: partial read: …` goes to standard error, and the exit status is 0. When the device answers discovery and then not one model can be read (it stops answering, the connection is lost, or it refuses every read), `read` prints no models and exits with the code of the error, as `read-model` does: 5 for a timeout, 4 for a lost connection, 6 for a Modbus exception ([docs/exitcodes.md](docs/exitcodes.md)).
+
 ## Polling
 
-The `poll`, `poll-model`, and `poll-point` commands work like their `read` counterparts but repeat at a configurable interval.
+The `poll`, `poll-model`, and `poll-point` commands work like their `read` counterparts but repeat at a configurable interval. `poll-model` and `poll-point` stop at the first error. `poll` handles each round as `read` does: a round in which some models cannot be read is printed with the warning and polling goes on; a round in which not one model can be read stops `poll` with the exit code of the error.
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -313,7 +315,7 @@ The device answers one unit ID: the one of the device file, or `--unit-id`. A re
 
 ### Serving over TLS
 
-`tcp+tls://` is Modbus/TCP Security: TLS in which both sides present a certificate. `serve` and the client commands take the same three flags, each for its own side: `--tls-cert` and `--tls-key` are the certificate and key that side presents, `--tls-ca` the CA certificates the other side's certificate must chain to. All three are required for a `tcp+tls://` URL and ignored for any other. The device certificate must name the host or IP address the clients connect to.
+`tcp+tls://` is Modbus/TCP Security: TLS in which both sides present a certificate. `serve` and the client commands take the same three flags, each for its own side: `--tls-cert` and `--tls-key` are the certificate and key that side presents, `--tls-ca` the CA certificates the other side's certificate must chain to. All three are required for a `tcp+tls://` URL and ignored for any other. Without one of them a command, `serve` included, stops with a usage error (exit 2); a TLS file that cannot be read or used is exit 3. The device certificate must name the host or IP address the clients connect to.
 
 ```bash
 # The device presents device.pem and accepts clients with a certificate of ca.pem

@@ -172,21 +172,47 @@ func TestTLSFlagErrors(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "missing.pem")
 	const url = "tcp+tls://127.0.0.1:1"
 
+	// A missing flag is a usage error (exit 2), for serve as for the client
+	// commands; a TLS file that cannot be used is invalid input (exit 3).
+	wantCode := func(t *testing.T, r result, code int) {
+		t.Helper()
+		if got := exitCode(r.err); got != code {
+			t.Errorf("exit %d (%v), want %d", got, r.err, code)
+		}
+	}
 	t.Run("client without flags", func(t *testing.T) {
-		wantFail(t, runCLI(t, "models", "--url", url), "a tcp+tls:// URL needs --tls-cert, --tls-key, --tls-ca")
+		r := runCLI(t, "models", "--url", url)
+		wantFail(t, r, "a tcp+tls:// URL needs --tls-cert, --tls-key, --tls-ca")
+		wantCode(t, r, exitUsage)
 	})
 	t.Run("client without CA", func(t *testing.T) {
-		wantFail(t, runCLI(t, "models", "--url", url, "--tls-cert", cert, "--tls-key", key), "a tcp+tls:// URL needs --tls-ca")
+		r := runCLI(t, "models", "--url", url, "--tls-cert", cert, "--tls-key", key)
+		wantFail(t, r, "a tcp+tls:// URL needs --tls-ca")
+		wantCode(t, r, exitUsage)
 	})
 	t.Run("serve without flags", func(t *testing.T) {
-		wantFail(t, runCLI(t, "serve", "--file", device, "--url", url),
-			"serve: a tcp+tls:// URL needs --tls-cert, --tls-key, --tls-ca")
+		r := runCLI(t, "serve", "--file", device, "--url", url)
+		wantFail(t, r, "serve: a tcp+tls:// URL needs --tls-cert, --tls-key, --tls-ca")
+		wantCode(t, r, exitUsage)
+	})
+	t.Run("serve without CA", func(t *testing.T) {
+		r := runCLI(t, "serve", "--file", device, "--url", url, "--tls-cert", cert, "--tls-key", key)
+		wantFail(t, r, "serve: a tcp+tls:// URL needs --tls-ca")
+		wantCode(t, r, exitUsage)
 	})
 	t.Run("missing certificate file", func(t *testing.T) {
 		r := runCLI(t, "models", "--url", url, "--tls-cert", missing, "--tls-key", key, "--tls-ca", ca.file)
 		if r.err == nil || !strings.HasPrefix(r.err.Error(), "--tls-cert/--tls-key: ") {
 			t.Errorf("error = %v", r.err)
 		}
+		wantCode(t, r, exitInvalidInput)
+	})
+	t.Run("serve with missing certificate file", func(t *testing.T) {
+		r := runCLI(t, "serve", "--file", device, "--url", url, "--tls-cert", missing, "--tls-key", key, "--tls-ca", ca.file)
+		if r.err == nil || !strings.HasPrefix(r.err.Error(), "serve: --tls-cert/--tls-key: ") {
+			t.Errorf("error = %v", r.err)
+		}
+		wantCode(t, r, exitInvalidInput)
 	})
 	t.Run("key of another certificate", func(t *testing.T) {
 		_, otherKey := ca.issue("other")
@@ -194,12 +220,14 @@ func TestTLSFlagErrors(t *testing.T) {
 		if r.err == nil || !strings.HasPrefix(r.err.Error(), "--tls-cert/--tls-key: ") {
 			t.Errorf("error = %v", r.err)
 		}
+		wantCode(t, r, exitInvalidInput)
 	})
 	t.Run("CA file without certificates", func(t *testing.T) {
 		r := runCLI(t, "serve", "--file", device, "--url", url, "--tls-cert", cert, "--tls-key", key, "--tls-ca", notPEM)
 		if r.err == nil || !strings.HasPrefix(r.err.Error(), "serve: --tls-ca: ") {
 			t.Errorf("error = %v", r.err)
 		}
+		wantCode(t, r, exitInvalidInput)
 	})
 }
 
