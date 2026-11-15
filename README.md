@@ -212,6 +212,8 @@ ID     NAME                                    START  LENGTH
 
 The device runs until you press Ctrl-C or the process is terminated (SIGINT or SIGTERM); it then closes its connections, prints `shutting down` on standard error and exits with status 0. The file is validated completely before the device starts listening: an error names the model and point it concerns and the exit status is 3.
 
+The device serves at most 10 clients at a time. A connection beyond that is closed at once; a connection on which no request arrives for 120 seconds is closed and frees its slot. The warnings and errors of the Modbus server are printed on standard error, one line each, escaped like any text output: a connection refused at that limit, a failed TLS handshake, a request whose handling did not end normally (answered with exception 4). Requests that are served print nothing there.
+
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--file`, `-f` | (required) | The device file |
@@ -332,6 +334,8 @@ A client can write the points SunSpec defines as writable (access `RW` in the mo
 ```
 write from 127.0.0.1: model 123 at 40176: WMaxLimPct = 50.5
 ```
+
+Writes are carried out one at a time, also those of different clients, and each is printed once it has taken effect, in that order: the last write printed for a point is the value the device holds. A write that arrives while `serve` prints the layout waits until the layout is printed.
 
 Writes to read-only points, to model headers, to the points that count group instances, to part of a multi-register point, to models given as `registers` and to unmapped addresses are refused with Modbus exception 2 (illegal data address). The simulated device stores what is written; it does not act on it — writing a power limit does not change the served power.
 

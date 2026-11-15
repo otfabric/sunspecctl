@@ -150,6 +150,18 @@ func TestServeTLS(t *testing.T) {
 	if err := s.stop(t); err != nil {
 		t.Errorf("serve: %v", err)
 	}
+	// The refused clients are reported on stderr: a failed TLS handshake for
+	// each connection they made (discovery connects once per base address).
+	got := strings.Split(s.stderr.String(), "\n")
+	if len(got) < 5 || got[len(got)-2] != "shutting down" || got[len(got)-1] != "" {
+		t.Errorf("stderr = %q, want the failed TLS handshakes, then shutting down", s.stderr.String())
+	} else {
+		for _, line := range got[:len(got)-2] {
+			if !strings.Contains(line, "[warn]: TLS handshake with 127.0.0.1:") {
+				t.Errorf("stderr line %q, want a failed TLS handshake", line)
+			}
+		}
+	}
 }
 
 func TestTLSFlagErrors(t *testing.T) {

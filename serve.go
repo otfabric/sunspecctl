@@ -96,13 +96,66 @@ type writeEvent struct {
 	Points []sunspec.DecodedPoint
 }
 
-// serverWriteHook adapts a write observer to the library's hook: every write
-// the device accepts is reported, none is refused.
-func serverWriteHook(observe func(*sunspec.ServerWrite)) func(context.Context, *sunspec.ServerWrite) error {
-	return func(_ context.Context, w *sunspec.ServerWrite) error {
-		observe(w)
-		return nil
+// loggedServer serves a device and prints the client writes that took
+// effect, with log. Client writes are carried out one at a time, with mu
+// held, so that they are printed in the order they took effect; serve holds
+// mu while it prints its status, so that no write is printed before or inside
+// it. Reads are served without mu.
+type loggedServer struct {
+	*sunspec.Server
+	log func(*sunspec.ServerWrite)
+	mu  sync.Mutex
+	// pending is what the device's OnWrite hook was given for the write
+	// being served; mu is held.
+	pending *sunspec.ServerWrite
+}
+
+// onWrite is the device's OnWrite hook. The device calls it before the write
+// takes effect, which it then may not, so it only keeps the write for
+// HandleHoldingRegisters and accepts it.
+func (s *loggedServer) onWrite(_ context.Context, w *sunspec.ServerWrite) error {
+	s.pending = w
+	return nil
+}
+
+// HandleHoldingRegisters serves the request as the device does. A write is
+// printed once the device returned without an error, that is once it took
+// effect; a write the device refused is not printed.
+func (s *loggedServer) HandleHoldingRegisters(ctx context.Context, req *modbus.HoldingRegistersRequest) ([]uint16, error) {
+	if req == nil || !req.IsWrite {
+		return s.Server.HandleHoldingRegisters(ctx, req)
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.pending = nil
+	regs, err := s.Server.HandleHoldingRegisters(ctx, req)
+	if err == nil && s.pending != nil {
+		s.log(s.pending)
+	}
+	return regs, err
+}
+
+// serveLogger is the go-modbus logger of serve. Warnings and errors (a
+// connection refused because every client slot is taken, a failed TLS
+// handshake, code the server calls that did not return normally) are printed
+// on w, one line each, through termSafe: client addresses and errors come
+// from the peer, and a stack is printed on the same line. Debug and info
+// entries, which go-modbus writes for every frame, are dropped.
+type serveLogger struct {
+	mu sync.Mutex
+	w  io.Writer
+}
+
+func (l *serveLogger) Debugf(string, ...any)             {}
+func (l *serveLogger) Infof(string, ...any)              {}
+func (l *serveLogger) Warnf(format string, args ...any)  { l.print(format, args...) }
+func (l *serveLogger) Errorf(format string, args ...any) { l.print(format, args...) }
+
+func (l *serveLogger) print(format string, args ...any) {
+	line := termSafe(fmt.Sprintf(format, args...))
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	_, _ = fmt.Fprintln(l.w, line)
 }
 
 // writeLogger returns an observer that prints client writes to out, one line
@@ -174,8 +227,10 @@ of the file; --unit-id and --base-address override them. The file
 is checked completely before the device starts; --check stops there.
 
 Clients can read every register of the device and write the points that
-SunSpec defines as writable. Accepted writes are printed. The device runs
-until it is interrupted (Ctrl-C) or terminated.`,
+SunSpec defines as writable. Accepted writes are printed, and the warnings
+and errors of the Modbus server (a refused connection, a failed TLS
+handshake) on standard error. The device runs until it is interrupted
+(Ctrl-C) or terminated.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// serve listens: there is no connection to proxy or bind. The
@@ -198,14 +253,16 @@ until it is interrupted (Ctrl-C) or terminated.`,
 				base = &baseAddress
 			}
 			out := cmd.OutOrStdout()
+			logged := &loggedServer{log: writeLogger(out)}
 			srv, err := df.Server(&devicefile.ServerOptions{
 				UnitID:      unitID,
 				BaseAddress: base,
-				OnWrite:     serverWriteHook(writeLogger(out)),
+				OnWrite:     logged.onWrite,
 			})
 			if err != nil {
 				return withExit(exitInvalidInput, fmt.Errorf("device file %s: %w", file, err))
 			}
+			logged.Server = srv
 			device := describeServer(flagURL, srv)
 
 			if check {
@@ -223,28 +280,31 @@ until it is interrupted (Ctrl-C) or terminated.`,
 			}
 			server, err := modbus.NewServer(&modbus.ServerConfig{
 				URL:           flagURL,
-				Logger:        modbus.NopLogger(),
+				Logger:        &serveLogger{w: cmd.ErrOrStderr()},
 				TLSServerCert: cert,
 				TLSClientCAs:  clientCAs,
-			}, srv)
+			}, logged)
 			if err != nil {
 				return fmt.Errorf("serve: %w", err)
 			}
-			if err := server.Start(); err != nil {
+			// A client write that arrives before the status is printed waits
+			// for it.
+			logged.mu.Lock()
+			if err = server.Start(); err != nil {
+				logged.mu.Unlock()
 				return withExit(exitTransport, fmt.Errorf("serve: listen on %s: %w", flagURL, err))
 			}
 			if flagJSON {
-				if err := printJSON(out, device); err != nil {
-					_ = server.Stop()
-					return err
-				}
+				err = printJSON(out, device)
 			} else {
 				w := newOutputWriter(out)
 				printServedDevice(w, "Serving", device)
-				if err := w.result(); err != nil {
-					_ = server.Stop()
-					return err
-				}
+				err = w.result()
+			}
+			logged.mu.Unlock()
+			if err != nil {
+				_ = server.Stop()
+				return err
 			}
 
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)

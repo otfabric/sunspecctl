@@ -145,4 +145,4 @@ Strings are written as the device sent them, escaped as JSON escapes them. Text 
 }
 ```
 
-`serve` prints one for each accepted write. `Address` is the first register written, `Registers` the values, and `Points` the written points as [decoded points](#decoded-point).
+`serve` prints one for each accepted write, once the write has taken effect and in the order the writes took effect; the first comes after the [Served device](#served-device). `Address` is the first register written, `Registers` the values, and `Points` the written points as [decoded points](#decoded-point).
