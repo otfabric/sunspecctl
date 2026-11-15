@@ -162,6 +162,9 @@ func startServe(t *testing.T, path string, args ...string) *serving {
 
 func TestServeExampleDevice(t *testing.T) {
 	s := startServe(t, writeFile(t, exampleDevice))
+	// startServe returns once the header is written; the table writer
+	// writes the rows after it, cell by cell.
+	s.stdout.waitFor(t, "40198  3\n")
 	wantStatus := lines(
 		"Serving SunSpec device on "+s.url+" (unit ID 3, base address 40000)",
 		"ID     NAME                         START  LENGTH",
