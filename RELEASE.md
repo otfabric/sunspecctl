@@ -1,5 +1,24 @@
 # sunspecctl Releases
 
+## v0.8.0
+
+**Date:** 2026-11-15
+**Previous release:** v0.7.8
+
+No command or flag is added or changed. `serve` refuses some device files it accepted before; files written by `capture` and `template` are unaffected.
+
+### Changed
+
+- Built on go-sunspec v0.12.0 (was v0.11.1) (go-sunspec RELEASE.md, v0.12.0). For the tool this means:
+  - `serve`: a device file with a member given twice (`{"id": 1, "id": 2}`), a member name in another case (`"ID"` for `"id"`) or a nested group named twice in one `groups` object is refused, with the line and column. Before, the last member was taken and names matched regardless of case. Give each member once, with its exact name, and list all instances of a nested group under one key.
+  - `serve`: a floating-point value that its scale factor would carry beyond the float range is refused when the file is loaded. Before, it was served as infinity.
+  - `serve`: a point value given as a list of more than 65535 entries is refused when the file is loaded; no point has that many registers.
+  - `capture`: a model with a string point that is not valid UTF-8 is written as `registers`, so the served copy reads the same as the device. Before, such a string was written as a point value that did not read back the same.
+  - `capture`: a model the device reports without data registers is written as `"registers": []`, which `serve` refuses as a model that does not match its layout. Before, the model was written without values and served at its schema's length.
+- README: the device-file rules name members given twice or in another case.
+
+---
+
 ## v0.7.8
 
 **Date:** 2026-11-15

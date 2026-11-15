@@ -5,8 +5,8 @@ github.com/otfabric/go-modbus v1.16.1 h1:VvXTHLz73yNHUXrB5BAkelQAp0NHzYpWEsu7iNz
 github.com/otfabric/go-modbus v1.16.1/go.mod h1:UfYm3oZyTqS2U+QQd0Cz/cLcO2zgDrxjnrW3aQManWY=
 github.com/otfabric/go-serial v0.4.1 h1:GfLtuIBvWc4ZvAsb0Ab6BEbh3E8qVHVa7TvHaSNh0o4=
 github.com/otfabric/go-serial v0.4.1/go.mod h1:CGEz7RtffVDY/EBU8oN/ydSCjMOdtRpB0LNTc8BmSUQ=
-github.com/otfabric/go-sunspec v0.11.1 h1:fDmAQbSwbYIy4SHR5MlEuxqJYcY1N6D/6zm8d5CxTeY=
-github.com/otfabric/go-sunspec v0.11.1/go.mod h1:oHGwF4erukj4qX7Tm5GCTdNASmzqoUkIxvTK47y2HQ8=
+github.com/otfabric/go-sunspec v0.12.0 h1:f17rfN3l7/H4TYm0Uur+a+29qFMW/px6X3OfYEtJN6c=
+github.com/otfabric/go-sunspec v0.12.0/go.mod h1:oHGwF4erukj4qX7Tm5GCTdNASmzqoUkIxvTK47y2HQ8=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 h1:1EYB5IzjZawrrnELUi78f9fPu57HuXjmddZPjrls/28=
 github.com/santhosh-tekuri/jsonschema/v6 v6.0.3/go.mod h1:JXeL+ps8p7/KNMjDQk3TCwPpBy0wYklyWTfbkIzdIFU=

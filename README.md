@@ -282,7 +282,7 @@ Values:
 | Any point | A list of register numbers, exactly as many as the point has registers: `"TmpCab": [65036]`. |
 | Not implemented | `null`, or leave the point out. |
 
-Unknown members, a point given twice and point names the model does not have are errors, so a typo does not silently serve an empty value.
+Unknown members, a member given twice or with its name in another case (`"ID"` for `"id"`), a point given twice and point names the model does not have are errors, so a typo does not silently serve an empty value. All instances of a nested group go under one key of `groups`.
 
 The format is implemented by the [`devicefile`](https://github.com/otfabric/go-sunspec/tree/main/devicefile) package of go-sunspec, which Go programs can use to read, write and serve device files themselves. Its JSON Schema, [`devicefile/devicefile.schema.json`](https://github.com/otfabric/go-sunspec/blob/main/devicefile/devicefile.schema.json) (`$id` `https://otfabric.io/schemas/sunspec/devicefile-1.schema.json`), describes the form of a file for editors and validators; whether the models and points exist and the values fit is checked by `sunspecctl serve --check`.
 
@@ -402,7 +402,7 @@ Tests need no hardware: they run against the SunSpec fixture server of go-sunspe
 ## Requirements
 
 - Go 1.26+ to build from source (not needed with the installer)
-- [otfabric/go-sunspec](https://github.com/otfabric/go-sunspec) v0.11.1+ and [otfabric/go-modbus](https://github.com/otfabric/go-modbus) v1.16.1+
+- [otfabric/go-sunspec](https://github.com/otfabric/go-sunspec) v0.12.0+ and [otfabric/go-modbus](https://github.com/otfabric/go-modbus) v1.16.1+
 
 ## Contributing
 
