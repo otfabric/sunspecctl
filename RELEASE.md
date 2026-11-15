@@ -1,5 +1,20 @@
 # sunspecctl Releases
 
+## v0.8.1
+
+**Date:** 2026-11-15
+**Previous release:** v0.8.0
+
+No command or flag is added or changed.
+
+### Fixed
+
+- `serve` prints a client write once it has taken effect, as the README and `docs/json-output.md` say, in text and with `--json`. From v0.7.6 to v0.8.0 a write was printed before the simulated device stored it: a write that another client's write to the same model overtook was printed, although it was answered with exception 4 (server device failure) and changed nothing. Client writes are now carried out one at a time, also those of different clients, and printed in the order they took effect, so the last write printed for a point is the value the device holds. The exception 4 that v0.7.6 describes for an overtaken write no longer occurs.
+- `serve` prints its layout whole before the first write event: the table, or with `--json` the Served device document, which is the first document on stdout. A client write that arrived while the layout was being printed could appear inside the table, or before the document; it now waits until the layout is printed.
+- `serve` prints the warnings and errors of the Modbus server on stderr, one line each, escaped for the terminal: a connection refused because 10 clients are connected (a connection on which no request arrives for 120 seconds is closed), a failed TLS handshake, code the server calls that did not return normally, with its stack on the same line. The v0.7.6 note that such code "is logged with its stack" held for go-modbus but not for `serve`, which gave go-modbus a logger that discards everything: from v0.7.6 to v0.8.0 such a request was answered with exception 4 and nothing was printed. Requests that are served print nothing on stderr, as before.
+
+---
+
 ## v0.8.0
 
 **Date:** 2026-11-15
