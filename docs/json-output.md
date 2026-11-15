@@ -21,7 +21,7 @@ The `poll` commands and `serve` write several documents in a row, not an array a
 
 `capture` and `template` write a device file, not this output: its format is in the [README](../README.md) and in the schema of go-sunspec's `devicefile` package.
 
-With `read` and `poll`, a model that cannot be read gives `warning: partial read` on stderr, and the array holds the rest.
+With `read` and `poll`, a model that cannot be read gives `warning: partial read` on stderr, and the array holds the rest. When not one model can be read, the command prints no document and exits with the error's code, and `poll` stops ([exit codes](exitcodes.md)).
 
 ## Version
 

@@ -1,5 +1,23 @@
 # sunspecctl Releases
 
+## v0.9.0
+
+**Date:** 2026-11-15
+**Previous release:** v0.8.1
+
+No command or flag is added or changed. Two exit codes change; no flag restores the old ones.
+
+### Breaking
+
+- `read` and `poll`: when the device answers discovery and then not one model can be read, the command fails with the first error and its exit code, as `read-model` and `poll-model` do: 5 when `--timeout` passed, 4 when the connection was lost, 6 when the device answers every read with a Modbus exception. A script now sees `Error: read: <error>` on stderr, no models on stdout (with `--json` no document), and `poll` stops after that round. Before, `read` printed every model without values, each with its error in `Warnings`, wrote `warning: partial read: <error>` on stderr and exited 0, and `poll` printed such rounds until `--count` was reached or it was interrupted. When at least one model can be read, nothing changes: the others carry their error, stderr has the warning, the exit code is 0 and `poll` goes on. A script that took exit 0 with that warning to mean "nothing read" checks the exit code instead, for example `sunspecctl read --json > out.json || …`. A script that needs the old handling treats 4, 5 and 6 from `read` and `poll` as it treated that warning; there is no flag for the old exit code.
+- `serve`: a `tcp+tls://` URL without `--tls-cert`, `--tls-key` or `--tls-ca` exits 2 (usage, missing argument), as the client commands do; the message is unchanged. Before, `serve` exited 3 (invalid input). A TLS file that cannot be read or used (a missing file, the key of another certificate, a CA file without certificates) is still 3. A script that tested `serve` for 3 to catch the missing flags tests for 2 now; there is no flag for the old exit code.
+
+### Changed
+
+- `docs/exitcodes.md`, `docs/json-output.md` and the README describe both.
+
+---
+
 ## v0.8.1
 
 **Date:** 2026-11-15

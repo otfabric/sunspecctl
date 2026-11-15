@@ -60,6 +60,9 @@ func checkPollFlags(interval time.Duration, count int) error {
 }
 
 // pollCmd returns the command that repeatedly reads and prints every model.
+// A round in which some models cannot be read prints them with their error
+// and a warning on stderr; a round in which no model can be read ends the
+// poll with the first error.
 func pollCmd() *cobra.Command {
 	var (
 		interval time.Duration
@@ -93,6 +96,9 @@ func pollCmd() *cobra.Command {
 			return pollLoop(cmd.Context(), interval, count, func(ctx context.Context, iteration int) error {
 				results, err := device.ReadAll(ctx)
 				if err != nil {
+					if nothingRead(results) {
+						return fmt.Errorf("read: %w", err)
+					}
 					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: partial read: %s\n", termSafe(err.Error()))
 				}
 

@@ -316,7 +316,9 @@ func modelsCmd() *cobra.Command {
 
 // --- read ---
 
-// readCmd returns the command that reads and prints every model once.
+// readCmd returns the command that reads and prints every model once. A
+// model that cannot be read is printed with its error and a warning on
+// stderr; when no model can be read, the command fails with the first error.
 func readCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "read",
@@ -338,6 +340,9 @@ func readCmd() *cobra.Command {
 
 			results, err := device.ReadAll(ctx)
 			if err != nil {
+				if nothingRead(results) {
+					return fmt.Errorf("read: %w", err)
+				}
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: partial read: %s\n", termSafe(err.Error()))
 			}
 
@@ -352,6 +357,19 @@ func readCmd() *cobra.Command {
 			return out.result()
 		},
 	}
+}
+
+// nothingRead reports whether no model of a ReadAll result holds data, that
+// is, not one register of any model could be read. read and each round of
+// poll then fail with ReadAll's error, and its exit code (docs/exitcodes.md),
+// instead of printing the models without data.
+func nothingRead(results []*sunspec.DecodedModel) bool {
+	for _, dm := range results {
+		if dm.Group != nil || len(dm.RawRegisters) > 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // --- read-model ---
