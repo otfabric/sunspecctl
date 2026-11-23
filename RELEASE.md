@@ -1,5 +1,18 @@
 # sunspecctl Releases
 
+## v0.9.3
+
+**Date:** 2026-11-23
+**Previous release:** v0.9.2
+
+No command or flag is added or changed.
+
+### Changed
+
+- Built on go-modbus v1.22.0 (was v1.17.0) (go-modbus RELEASE.md, v1.18.0..v1.22.0). The client commands read with FC 03 and 04 only, so none of the client changes of go-modbus v1.20.0 (FC 08, 12, 20, 43, `ProbeFunction`) applies to them. `serve` gets the server changes of go-modbus v1.20.0 and v1.21.0: a request PDU whose length disagrees with its function code is answered with exception 3 and the connection then closed (it was closed without an answer), and the warning printed on stderr when the server closes such a connection now names the function code and the reason; a request whose function code has the exception bit set (`0x80`..`0xFF`) is not answered and the connection is kept (it was answered with exception 1); on `tcp+tls://`, a Modbus Role extension with bytes after its UTF8String is invalid and the client is served with no role (`serve` does not use roles). go-sunspec stays at v0.12.2.
+
+---
+
 ## v0.9.2
 
 **Date:** 2026-11-16
